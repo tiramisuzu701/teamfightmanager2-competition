@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>League Records - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">League Records</h1>
+        <p class="page-subtitle">Single-game and season bests, plus the longest team win streaks.</p>
+      </div>
+      <div style="min-width:200px">
+        <select id="season-select"><option value="">All-Time</option></select>
+      </div>
+    </div>
+
+    <div id="records-grid" class="home-grid">
+      <p class="empty-state">Loading records...</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/records.js"></script>
+</body>
+</html>

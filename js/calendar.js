@@ -132,8 +132,10 @@ function showDayDetail(key) {
 
   body.innerHTML = dayGames
     .map((g) => {
-      const a = teamsById[g.team_a_id]?.name || "TBD";
-      const b = teamsById[g.team_b_id]?.name || "TBD";
+      const aTeam = teamsById[g.team_a_id];
+      const bTeam = teamsById[g.team_b_id];
+      const a = aTeam ? `<a href="team.html?id=${aTeam.id}">${esc(aTeam.name)}</a>` : "TBD";
+      const b = bTeam ? `<a href="team.html?id=${bTeam.id}">${esc(bTeam.name)}</a>` : "TBD";
       const time = new Date(g.scheduled_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
       const cancelBtn =
         isAdmin && g.status === "scheduled"
@@ -141,7 +143,7 @@ function showDayDetail(key) {
           : "";
       return `
         <div class="upcoming-game-row">
-          <span>${esc(a)} <span class="text-muted">vs</span> ${esc(b)} <span class="text-muted">- ${time}</span> ${statusBadge(g.status)}</span>
+          <span>${a} <span class="text-muted">vs</span> ${b} <span class="text-muted">- ${time}</span> ${statusBadge(g.status)}</span>
           ${cancelBtn}
         </div>`;
     })

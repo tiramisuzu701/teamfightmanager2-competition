@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Home - Teamfight Manager 2 League</title>
 <link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -14,6 +15,11 @@
     <div class="card" id="welcome-card">
       <h1 class="page-title" id="welcome-title">Welcome</h1>
       <p class="page-subtitle" id="welcome-subtitle">Loading league overview...</p>
+    </div>
+
+    <div class="card" id="potw-card">
+      <h2 class="card-title">Player of the Week</h2>
+      <div id="potw-content"><p class="empty-state">Loading...</p></div>
     </div>
 
     <div class="home-grid">

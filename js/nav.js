@@ -9,7 +9,9 @@ const TABS = [
   { href: "calendar.html", label: "Calendar" },
   { href: "predictions.html", label: "Predictions" },
   { href: "brackets.html", label: "Brackets" },
+  { href: "records.html", label: "Records" },
   { href: "news.html", label: "News" },
+  { href: "rules.html", label: "Rules" },
   { href: "log-game.html", label: "Log Game" },
   { href: "manage.html", label: "Manage", adminOnly: true },
 ];
@@ -26,6 +28,27 @@ function currentPage() {
 // away and calls renderNav() again, that becomes a runaway loop that
 // freezes the tab. A module-level flag keeps it to a single subscription.
 let authListenerRegistered = false;
+
+const THEME_KEY = "tfm2_theme";
+
+function applyTheme(theme) {
+  if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+  else document.documentElement.removeAttribute("data-theme");
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // localStorage may be unavailable (e.g. private browsing) - theme just
+    // won't persist across page loads, which is a harmless degradation.
+  }
+}
+
+function currentTheme() {
+  try {
+    return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
 
 export async function renderNav(activeHref) {
   const root = document.getElementById("nav-root");
@@ -50,6 +73,7 @@ export async function renderNav(activeHref) {
         </a>
         <nav class="site-nav">${tabsHtml}</nav>
         <div class="auth-area" id="auth-area"></div>
+        <button class="btn btn-ghost btn-sm theme-toggle" id="theme-toggle-btn" aria-label="Toggle light/dark theme"></button>
         <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">&#9776;</button>
       </div>
     </header>
@@ -71,6 +95,16 @@ export async function renderNav(activeHref) {
 
   document.getElementById("nav-toggle").addEventListener("click", () => {
     document.querySelector(".site-nav").classList.toggle("open");
+  });
+
+  const themeBtn = document.getElementById("theme-toggle-btn");
+  const setThemeBtnLabel = () => {
+    themeBtn.textContent = currentTheme() === "light" ? "\u{1F319}" : "\u{2600}\u{FE0F}";
+  };
+  setThemeBtnLabel();
+  themeBtn.addEventListener("click", () => {
+    applyTheme(currentTheme() === "light" ? "dark" : "light");
+    setThemeBtnLabel();
   });
 
   if (!isConfigured()) {

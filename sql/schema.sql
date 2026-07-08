@@ -195,6 +195,18 @@ create table if not exists news_items (
 
 create index if not exists idx_news_items_created on news_items(created_at desc);
 
+-- ----------------------------------------------------------------------------
+-- LEAGUE SETTINGS (singleton row: Discord webhook + rules/handbook content)
+-- ----------------------------------------------------------------------------
+create table if not exists league_settings (
+  id boolean primary key default true check (id),
+  discord_webhook_url text,
+  rules_content text,
+  updated_at timestamptz not null default now()
+);
+
+insert into league_settings (id) values (true) on conflict (id) do nothing;
+
 -- ============================================================================
 -- VIEWS
 -- ============================================================================
@@ -304,6 +316,7 @@ alter table games enable row level security;
 alter table game_player_stats enable row level security;
 alter table predictions enable row level security;
 alter table news_items enable row level security;
+alter table league_settings enable row level security;
 
 -- Public read access
 create policy "public read teams" on teams for select using (true);
@@ -384,6 +397,16 @@ create policy "public update own predictions before lock" on predictions for upd
   );
 create policy "admin delete predictions" on predictions for delete using (auth.role() = 'authenticated');
 
+-- League settings: admins can read/write the whole row (including the
+-- Discord webhook URL). The public can only ever read rules_content - the
+-- webhook URL is effectively a write credential (anyone holding it could
+-- post to the league's Discord channel), so it's kept out of anon's reach
+-- with a column-level GRANT below, not just this row-level policy.
+create policy "admin read settings" on league_settings for select to authenticated using (true);
+create policy "admin insert settings" on league_settings for insert to authenticated with check (true);
+create policy "admin update settings" on league_settings for update to authenticated using (true) with check (true);
+create policy "public read rules" on league_settings for select to anon using (true);
+
 -- Explicit grants (Supabase usually sets these up, but this makes it explicit)
 grant select on team_standings, player_stats_aggregate, prediction_leaderboard to anon, authenticated;
 grant select, insert, update, delete on
@@ -396,3 +419,33 @@ grant select on
   to anon;
 grant select, insert, update on predictions to anon;
 grant select, insert, update, delete on predictions to authenticated;
+grant select, insert, update on league_settings to authenticated;
+grant select (rules_content, updated_at) on league_settings to anon;
+
+-- ============================================================================
+-- STORAGE: team logos + player photos (public read via public URL, admin
+-- write only). Public buckets serve objects via the public URL endpoint
+-- regardless of RLS, so no public "select" policy is added here - that
+-- would only let anyone list every file in the bucket, with no benefit.
+-- ============================================================================
+insert into storage.buckets (id, name, public)
+values ('team-logos', 'team-logos', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('player-photos', 'player-photos', true)
+on conflict (id) do nothing;
+
+create policy "admin write team-logos" on storage.objects for insert to authenticated
+  with check (bucket_id = 'team-logos');
+create policy "admin update team-logos" on storage.objects for update to authenticated
+  using (bucket_id = 'team-logos');
+create policy "admin delete team-logos" on storage.objects for delete to authenticated
+  using (bucket_id = 'team-logos');
+
+create policy "admin write player-photos" on storage.objects for insert to authenticated
+  with check (bucket_id = 'player-photos');
+create policy "admin update player-photos" on storage.objects for update to authenticated
+  using (bucket_id = 'player-photos');
+create policy "admin delete player-photos" on storage.objects for delete to authenticated
+  using (bucket_id = 'player-photos');

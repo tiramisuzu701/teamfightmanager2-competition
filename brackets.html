@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Brackets - Teamfight Manager 2 League</title>
 <link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -49,7 +50,10 @@
         </div>
       </div>
       <div class="field">
-        <label>Teams in this tournament (in seed order for double elimination - best team first)</label>
+        <div class="stat-toggle-row" style="margin-bottom:8px">
+          <label style="margin:0">Teams in this tournament (in seed order for double elimination - best team first)</label>
+          <button class="btn btn-ghost btn-sm" id="seed-from-standings-btn" type="button">Seed from Standings</button>
+        </div>
         <div id="team-checkboxes" class="card" style="background:var(--bg);max-height:260px;overflow-y:auto"></div>
       </div>
       <button class="btn btn-primary" id="create-tournament-btn">Create Bracket</button>

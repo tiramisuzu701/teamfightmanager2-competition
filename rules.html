@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rules - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">League Rules &amp; Handbook</h1>
+        <p class="page-subtitle">Everything players and teams need to know.</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="edit-rules-btn" style="display:none">Edit</button>
+    </div>
+
+    <div class="card">
+      <div id="rules-display"><p class="empty-state">Loading...</p></div>
+      <div id="rules-edit" style="display:none">
+        <div class="field">
+          <label for="rules-textarea">Rules content</label>
+          <textarea id="rules-textarea" rows="18" placeholder="Write your league rules here. Blank lines separate paragraphs."></textarea>
+        </div>
+        <button class="btn btn-primary" id="save-rules-btn">Save</button>
+        <button class="btn btn-ghost" id="cancel-rules-btn">Cancel</button>
+        <div id="rules-msg" class="form-msg"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/rules.js"></script>
+</body>
+</html>

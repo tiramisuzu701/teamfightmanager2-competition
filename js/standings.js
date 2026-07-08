@@ -68,7 +68,7 @@ function render() {
       return `
         <tr>
           <td class="${rankClass}">${i + 1}</td>
-          <td class="team-name">${escapeHtml(t.name)}${t.short_name ? ` <span class="text-muted">(${escapeHtml(t.short_name)})</span>` : ""}</td>
+          <td class="team-name">${t.logo_url ? `<img src="${escapeHtml(t.logo_url)}" alt="" class="thumb-logo" />` : ""}<a href="team.html?id=${t.team_id}">${escapeHtml(t.name)}</a>${t.short_name ? ` <span class="text-muted">(${escapeHtml(t.short_name)})</span>` : ""}</td>
           <td class="text-right num win-badge">${t.wins ?? 0}</td>
           <td class="text-right num loss-badge">${t.losses ?? 0}</td>
           <td class="text-right num">${t.games_played ?? 0}</td>

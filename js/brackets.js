@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
 import { getSession } from "./auth.js";
 import { generateDoubleElimination, generateRoundRobin, advanceMatch } from "./bracketGen.js";
+import { loadSeasons, currentSeason } from "./seasons.js";
 
 renderNav("brackets.html");
 
@@ -9,6 +10,7 @@ let teams = [];
 let teamsById = {};
 let tournaments = [];
 let isAdmin = false;
+let seedOrder = null; // non-null once "Seed from Standings" is used
 
 async function init() {
   const session = await getSession();
@@ -38,6 +40,7 @@ async function init() {
     document.getElementById("rr-options").style.display = e.target.value === "round_robin" ? "block" : "none";
   });
   document.getElementById("create-tournament-btn").addEventListener("click", createTournament);
+  document.getElementById("seed-from-standings-btn").addEventListener("click", useSeedFromStandings);
 
   if (tournaments.length > 0) {
     select.value = tournaments[0].id;
@@ -47,20 +50,64 @@ async function init() {
 
 function openNewTournamentForm() {
   document.getElementById("new-tournament-card").style.display = "block";
-  document.getElementById("team-checkboxes").innerHTML = teams
-    .map((t) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px"><input type="checkbox" value="${t.id}" style="width:auto" />${esc(t.name)}</label>`)
-    .join("");
+  seedOrder = null;
+  renderCheckboxes();
 }
 function closeNewTournamentForm() {
   document.getElementById("new-tournament-card").style.display = "none";
   document.getElementById("create-msg").textContent = "";
 }
 
+function renderCheckboxes() {
+  document.getElementById("team-checkboxes").innerHTML = teams
+    .map((t) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px"><input type="checkbox" value="${t.id}" style="width:auto" />${esc(t.name)}</label>`)
+    .join("");
+}
+
+async function useSeedFromStandings() {
+  const msg = document.getElementById("create-msg");
+  msg.textContent = "Loading current standings...";
+  msg.className = "form-msg";
+  try {
+    const seasons = await loadSeasons();
+    const season = currentSeason(seasons);
+    if (!season) throw new Error("No current season found.");
+    const { data, error } = await supabase
+      .from("team_standings")
+      .select("*")
+      .eq("season_id", season.id)
+      .order("win_pct", { ascending: false });
+    if (error) throw error;
+    const ranked = (data || []).filter((t) => teamsById[t.team_id]);
+    if (ranked.length < 2) throw new Error("Need at least 2 teams with a standings record to seed from.");
+    seedOrder = ranked.map((t) => t.team_id);
+    renderSeedList();
+    msg.textContent = `Seeded ${seedOrder.length} teams by ${season.name} win %.`;
+    msg.className = "form-msg success";
+  } catch (err) {
+    msg.textContent = "Error: " + err.message;
+    msg.className = "form-msg error";
+  }
+}
+
+function renderSeedList() {
+  const container = document.getElementById("team-checkboxes");
+  container.innerHTML = `
+    <ol style="margin:0;padding-left:22px">
+      ${seedOrder.map((id) => `<li style="padding:4px 0">${esc(teamsById[id]?.name || "Unknown")}</li>`).join("")}
+    </ol>
+    <button class="btn btn-ghost btn-sm" id="clear-seed-btn" type="button">Use manual selection instead</button>`;
+  document.getElementById("clear-seed-btn").addEventListener("click", () => {
+    seedOrder = null;
+    renderCheckboxes();
+  });
+}
+
 async function createTournament() {
   const msg = document.getElementById("create-msg");
   const name = document.getElementById("t-name").value.trim();
   const format = document.getElementById("t-format").value;
-  const checked = [...document.querySelectorAll("#team-checkboxes input:checked")].map((cb) => cb.value);
+  const checked = seedOrder || [...document.querySelectorAll("#team-checkboxes input:checked")].map((cb) => cb.value);
 
   if (!name) return (msg.textContent = "Please enter a tournament name."), void (msg.className = "form-msg error");
   if (checked.length < 2) return (msg.textContent = "Select at least 2 teams."), void (msg.className = "form-msg error");

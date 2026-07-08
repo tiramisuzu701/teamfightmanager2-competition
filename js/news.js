@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
 import { getSession } from "./auth.js";
+import { postToDiscord } from "./discord.js";
 
 renderNav("news.html");
 
@@ -94,6 +95,8 @@ async function submitNews() {
       msg.className = "form-msg error";
       return;
     }
+    const fromTeamName = fromTeamId ? teamsById[fromTeamId]?.name : null;
+    postToDiscord(`📰 **Trade:** ${player.name}${fromTeamName ? ` (${fromTeamName})` : ""} moves to **${toTeamName}**`);
   } else {
     const title = document.getElementById("ann-title").value.trim();
     const body = document.getElementById("ann-body").value.trim() || null;
@@ -110,6 +113,7 @@ async function submitNews() {
       msg.className = "form-msg error";
       return;
     }
+    postToDiscord(`📢 **${title}**${body ? `\n${body}` : ""}`);
   }
 
   msg.textContent = "Posted!";
@@ -152,10 +156,12 @@ function renderNewsItem(n) {
   const badge = `<span class="news-type-badge ${n.type}">${n.type === "trade" ? "Trade" : "Announcement"}</span>`;
   let body = n.body ? `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${esc(n.body)}</div>` : "";
   if (n.type === "trade") {
-    const player = playersById[n.player_id]?.name || "A player";
-    const from = teamsById[n.from_team_id]?.name;
-    const to = teamsById[n.to_team_id]?.name || "a new team";
-    body = `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${esc(player)} moved${from ? ` from ${esc(from)}` : ""} to ${esc(to)}.</div>`;
+    const player = playersById[n.player_id];
+    const from = teamsById[n.from_team_id];
+    const to = teamsById[n.to_team_id];
+    const playerLabel = player ? `<a href="player.html?id=${player.id}">${esc(player.name)}</a>` : "A player";
+    const toLabel = to ? `<a href="team.html?id=${to.id}">${esc(to.name)}</a>` : "a new team";
+    body = `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${playerLabel} moved${from ? ` from ${esc(from.name)}` : ""} to ${toLabel}.</div>`;
   }
   return `
     <div class="news-item">

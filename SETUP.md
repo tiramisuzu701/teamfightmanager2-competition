@@ -84,15 +84,17 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 
 ## Day-to-day use once it's live
 
-- **Manage tab**: add/remove teams and players, and start a new season
-  when you're ready to move on from the current one.
+- **Manage tab**: add/remove teams and players, upload a logo/photo for
+  each (click "Upload" next to a team or player row), start a new season,
+  and set an optional Discord webhook URL for auto-announcements.
 - **Calendar tab**: schedule upcoming games (pick two teams, a date/time,
   optional notes). Anyone can browse the month-by-month schedule; only
   admins see the "+ Schedule Game" button and can cancel a scheduled game.
 - **Log Game tab**: after each game, log the winner and each player's stats.
   If the game was on the calendar, pick it from the "Link to scheduled
   game" dropdown first - it auto-fills the teams and marks that calendar
-  entry as completed. Standings and player leaderboards update immediately.
+  entry as completed. Standings and player leaderboards update immediately,
+  and (if a Discord webhook is set) the result posts to your channel.
 - **Predictions tab**: open to everyone, no login required - visitors type
   a display name once (remembered on their device) and pick winners for
   the day's games. Picks lock 30 minutes before each game starts, and a
@@ -100,22 +102,61 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 - **News tab**: admins can log a trade (pick a player and their new team -
   this also updates the player's roster assignment automatically) or post
   a free-form announcement. Everyone sees the combined feed, newest first,
-  and the 5 most recent items also show up on the Home page.
+  the 5 most recent items also show up on the Home page, and (if a Discord
+  webhook is set) both post to your channel automatically.
 - **Brackets tab**: create a double-elimination or round-robin tournament
   from your teams, and report results as they happen - the bracket
-  advances itself automatically.
+  advances itself automatically. Click "Seed from Standings" while
+  creating a tournament to auto-order teams by the current season's win %
+  instead of picking the order by hand.
+- **Records tab**: single-game bests (most kills, best KDA, most damage,
+  etc.) and the longest team win streak, browsable all-time or by season -
+  updates automatically as games are logged, no admin action needed.
+- **Rules tab**: a public page for your league's rules/handbook. Admins see
+  an "Edit" button to write or update it directly on the site - no code
+  or GitHub push required.
+- **Team and player pages**: click any team or player name anywhere on the
+  site to open their profile - roster, record, recent games, and
+  head-to-head for teams; season stats, a KDA trend chart, and full game
+  log for players.
+- **Theme toggle**: the sun/moon button in the nav switches between dark
+  and light mode; it's remembered per visitor's browser.
 - **Starting a new season** (Manage tab): give it a name (e.g. "Season 2")
   and confirm. This ends the current season and starts a fresh one -
   Standings and Players immediately reset to 0-0-0 for the new season, but
   every past game, team record, and player stat stays intact and can still
-  be viewed any time via the season-picker dropdown on the Standings and
-  Players pages.
+  be viewed any time via the season-picker dropdown on the Standings,
+  Players, and Records pages.
 - Only people logged in with an admin account (created in step 2) can do
   any of the above admin-only actions; everyone else sees a read-only
   public site (except for making predictions, which never requires login).
 
+## Setting up Discord announcements (optional)
+
+1. In Discord, go to your server's **Server Settings -> Integrations ->
+   Webhooks -> New Webhook**, pick the channel you want announcements in,
+   and copy the webhook URL.
+2. Paste it into the **Integrations** card on the **Manage** tab and save.
+3. From then on, every logged game and every posted news item (trade or
+   announcement) will automatically post a short message to that channel.
+   Leave the field blank at any time to turn this off.
+
+This URL is only ever visible to signed-in admins - it's stored the same
+way the Discord webhook URL would be treated as a password, since anyone
+holding it could post into your channel.
+
 ## Notes and limitations
 
+- **Team logos / player photos**: stored in two Supabase Storage buckets
+  (`team-logos`, `player-photos`) I already created and configured - public
+  read, admin-only upload. Nothing extra to set up; just use the "Upload"
+  button next to any team/player row on the Manage tab.
+- **Player of the Week**: a simple weighted formula (kills, assists,
+  deaths, and a win bonus) over the last 7 days of logged games - it's meant
+  to spotlight a standout performer, not serve as an official award.
+- **League Records**: recalculated live from all logged games every time
+  you open the page - there's nothing to "reset" and no separate records
+  table to maintain.
 - **Bracket resets**: in double elimination, if the team coming from the
   losers' bracket wins the Grand Final, true double-elimination rules say
   a single deciding match should be played (since both finalists would now

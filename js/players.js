@@ -144,8 +144,8 @@ function renderAllTable() {
   document.getElementById("players-body").innerHTML = sorted
     .map((p) => `
       <tr>
-        <td class="team-name">${esc(p.name)}</td>
-        <td class="text-muted">${esc(p.team_name || "-")}</td>
+        <td class="team-name">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="" class="thumb-logo" />` : ""}<a href="player.html?id=${p.player_id}">${esc(p.name)}</a></td>
+        <td class="text-muted">${p.team_id ? `<a href="team.html?id=${p.team_id}">${esc(p.team_name || "-")}</a>` : esc(p.team_name || "-")}</td>
         <td class="text-muted">${esc(p.role || "-")}</td>
         <td class="text-right num">${p.games_played}</td>
         <td class="text-right num win-badge">${p.wins}</td>
@@ -192,8 +192,8 @@ function renderLeaderboard() {
       return `
         <tr>
           <td class="${rankClass}">${i + 1}</td>
-          <td class="team-name">${esc(p.name)}</td>
-          <td class="text-muted">${esc(p.team_name || "-")}</td>
+          <td class="team-name"><a href="player.html?id=${p.player_id}">${esc(p.name)}</a></td>
+          <td class="text-muted">${p.team_id ? `<a href="team.html?id=${p.team_id}">${esc(p.team_name || "-")}</a>` : esc(p.team_name || "-")}</td>
           <td class="text-right num ${rankClass}">${val}</td>
         </tr>`;
     })

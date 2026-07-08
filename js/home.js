@@ -32,6 +32,7 @@ async function init() {
     loadRecentNews(teamsById, playersById),
     season ? loadStandingsSnapshot(season.id) : Promise.resolve(),
     season ? loadPlayersSnapshot(season.id) : Promise.resolve(),
+    loadPlayerOfWeek(),
   ]);
 
   if (!season) {
@@ -60,11 +61,13 @@ async function loadUpcomingGames(teamsById) {
   }
   container.innerHTML = data
     .map((g) => {
-      const a = teamsById[g.team_a_id]?.name || "TBD";
-      const b = teamsById[g.team_b_id]?.name || "TBD";
+      const a = teamsById[g.team_a_id];
+      const b = teamsById[g.team_b_id];
+      const aLabel = a ? `<a href="team.html?id=${a.id}">${esc(a.name)}</a>` : "TBD";
+      const bLabel = b ? `<a href="team.html?id=${b.id}">${esc(b.name)}</a>` : "TBD";
       return `
         <div class="upcoming-game-row">
-          <span>${esc(a)} <span class="text-muted">vs</span> ${esc(b)}</span>
+          <span>${aLabel} <span class="text-muted">vs</span> ${bLabel}</span>
           <span class="upcoming-game-time">${formatDateTime(g.scheduled_at)}</span>
         </div>`;
     })
@@ -94,10 +97,12 @@ function renderNewsItem(n, teamsById, playersById) {
   const badge = `<span class="news-type-badge ${n.type}">${n.type === "trade" ? "Trade" : "Announcement"}</span>`;
   let body = n.body ? `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${esc(n.body)}</div>` : "";
   if (n.type === "trade") {
-    const player = playersById[n.player_id]?.name || "A player";
-    const from = teamsById[n.from_team_id]?.name;
-    const to = teamsById[n.to_team_id]?.name || "a new team";
-    body = `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${esc(player)} moved${from ? ` from ${esc(from)}` : ""} to ${esc(to)}.</div>`;
+    const player = playersById[n.player_id];
+    const from = teamsById[n.from_team_id];
+    const to = teamsById[n.to_team_id];
+    const playerLabel = player ? `<a href="player.html?id=${player.id}">${esc(player.name)}</a>` : "A player";
+    const toLabel = to ? `<a href="team.html?id=${to.id}">${esc(to.name)}</a>` : "a new team";
+    body = `<div class="text-muted" style="font-size:0.85rem;margin-top:2px">${playerLabel} moved${from ? ` from ${esc(from.name)}` : ""} to ${toLabel}.</div>`;
   }
   return `
     <div class="news-item">
@@ -129,7 +134,7 @@ async function loadStandingsSnapshot(seasonId) {
       (t, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td class="team-name">${esc(t.name)}</td>
+        <td class="team-name">${t.logo_url ? `<img src="${esc(t.logo_url)}" alt="" class="thumb-logo" />` : ""}<a href="team.html?id=${t.team_id}">${esc(t.name)}</a></td>
         <td class="text-right num win-badge">${t.wins}</td>
         <td class="text-right num loss-badge">${t.losses}</td>
         <td class="text-right num">${t.win_pct != null ? t.win_pct + "%" : "-"}</td>
@@ -161,12 +166,78 @@ async function loadPlayersSnapshot(seasonId) {
       (p, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td class="team-name">${esc(p.name)}</td>
-        <td class="text-muted">${esc(p.team_name || "-")}</td>
+        <td class="team-name">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="" class="thumb-logo" />` : ""}<a href="player.html?id=${p.player_id}">${esc(p.name)}</a></td>
+        <td class="text-muted">${p.team_id ? `<a href="team.html?id=${p.team_id}">${esc(p.team_name || "-")}</a>` : esc(p.team_name || "-")}</td>
         <td class="text-right num">${p.kda ?? "-"}</td>
       </tr>`
     )
     .join("");
+}
+
+async function loadPlayerOfWeek() {
+  const container = document.getElementById("potw-content");
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: games, error: gErr } = await supabase.from("games").select("id, played_at").gte("played_at", weekAgo);
+  if (gErr) {
+    container.innerHTML = `<p class="empty-state">Could not compute Player of the Week.</p>`;
+    return;
+  }
+  if (!games || games.length === 0) {
+    container.innerHTML = `<p class="empty-state">No games logged in the last 7 days.</p>`;
+    return;
+  }
+
+  const { data: gps, error: gpsErr } = await supabase
+    .from("game_player_stats")
+    .select("*")
+    .in("game_id", games.map((g) => g.id));
+  if (gpsErr || !gps || gps.length === 0) {
+    container.innerHTML = `<p class="empty-state">No games logged in the last 7 days.</p>`;
+    return;
+  }
+
+  // Simple weighted score: rewards kills and assists, penalizes deaths, and
+  // gives a bonus for wins - not meant to be a rigorous formula, just enough
+  // to surface a standout performer for the week.
+  const byPlayer = {};
+  gps.forEach((row) => {
+    const p = (byPlayer[row.player_id] = byPlayer[row.player_id] || { kills: 0, deaths: 0, assists: 0, wins: 0, losses: 0, score: 0 });
+    p.kills += row.kills;
+    p.deaths += row.deaths;
+    p.assists += row.assists;
+    if (row.win) p.wins++;
+    else p.losses++;
+    p.score += row.kills * 2 + row.assists * 1.5 - row.deaths + (row.win ? 3 : 0);
+  });
+
+  const topEntry = Object.entries(byPlayer).sort((a, b) => b[1].score - a[1].score)[0];
+  if (!topEntry) {
+    container.innerHTML = `<p class="empty-state">No games logged in the last 7 days.</p>`;
+    return;
+  }
+  const [topId, stats] = topEntry;
+
+  const { data: player } = await supabase.from("players").select("id, name, team_id, photo_url").eq("id", topId).maybeSingle();
+  let team = null;
+  if (player?.team_id) {
+    const { data: teamData } = await supabase.from("teams").select("id, name").eq("id", player.team_id).maybeSingle();
+    team = teamData || null;
+  }
+
+  container.innerHTML = `
+    <div class="profile-header">
+      ${
+        player?.photo_url
+          ? `<img src="${esc(player.photo_url)}" class="profile-logo" alt="" />`
+          : `<span class="profile-logo-placeholder">${esc((player?.name || "?").slice(0, 2).toUpperCase())}</span>`
+      }
+      <div>
+        <div class="page-title" style="margin:0;font-size:1.2rem">${player ? `<a href="player.html?id=${player.id}">${esc(player.name)}</a>` : "Unknown player"}</div>
+        <div class="text-muted" style="font-size:0.85rem">${team ? `<a href="team.html?id=${team.id}">${esc(team.name)}</a>` : ""}</div>
+        <div class="text-muted" style="font-size:0.8rem;margin-top:4px">${stats.kills}/${stats.deaths}/${stats.assists} &middot; ${stats.wins}-${stats.losses} this week</div>
+      </div>
+    </div>`;
 }
 
 function formatDateTime(iso) {

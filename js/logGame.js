@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
 import { requireAdmin } from "./auth.js";
+import { postToDiscord } from "./discord.js";
 
 renderNav("log-game.html");
 const session = await requireAdmin();
@@ -247,6 +248,12 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
         )
         .join("");
     }
+
+    const aName = teams.find((t) => t.id === aId)?.name || "Team A";
+    const bName = teams.find((t) => t.id === bId)?.name || "Team B";
+    const winnerName = winnerId === aId ? aName : bName;
+    const durationText = duration ? ` (${duration} min)` : "";
+    postToDiscord(`🎮 **${aName}** vs **${bName}**${durationText} - winner: **${winnerName}**`);
 
     msg.textContent = "Game saved! Standings and player stats have been updated.";
     msg.className = "form-msg success";

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Player - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="card" id="player-header">
+      <div class="profile-header">
+        <div id="player-photo-slot"></div>
+        <div>
+          <h1 class="page-title" id="player-name" style="margin-bottom:2px">Loading...</h1>
+          <p class="page-subtitle" id="player-subtitle" style="margin:0">&nbsp;</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-toggle-row">
+        <h2 class="card-title" style="margin:0">Season Stats</h2>
+        <div style="min-width:200px">
+          <select id="season-select"></select>
+        </div>
+      </div>
+      <div id="player-stats"><p class="empty-state">Loading...</p></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">KDA Trend</h2>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:-10px">Per-game KDA over the player's most recent logged games, oldest to newest.</p>
+      <div id="player-sparkline"><p class="empty-state">Loading...</p></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Game Log</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Opponent</th><th>Result</th><th class="text-right">K</th><th class="text-right">D</th><th class="text-right">A</th><th class="text-right">CS</th><th class="text-right">Damage</th></tr></thead>
+        <tbody id="player-gamelog-body"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>

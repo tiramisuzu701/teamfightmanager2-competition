@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Manage Teams &amp; Players - Teamfight Manager 2 League</title>
 <link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -31,6 +32,21 @@
     </div>
 
     <div class="card">
+      <h2 class="card-title">Integrations</h2>
+      <p class="text-muted" style="font-size:0.78rem">
+        Paste a Discord webhook URL (Server Settings &rarr; Integrations &rarr; Webhooks in Discord) to
+        automatically post to a channel whenever a game is logged or news/trade is announced. Leave blank to disable.
+        This URL is only ever visible to signed-in admins.
+      </p>
+      <div class="field">
+        <label for="discord-webhook">Discord webhook URL</label>
+        <input type="text" id="discord-webhook" placeholder="https://discord.com/api/webhooks/..." />
+      </div>
+      <button class="btn btn-primary" id="save-webhook-btn">Save</button>
+      <div id="webhook-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
       <h2 class="card-title">Add a Team</h2>
       <div class="field-row">
         <div class="field">
@@ -49,8 +65,8 @@
     <div class="card">
       <h2 class="card-title">Teams</h2>
       <table>
-        <thead><tr><th>Team</th><th>Short</th><th class="text-right">Players</th><th></th></tr></thead>
-        <tbody id="teams-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+        <thead><tr><th>Logo</th><th>Team</th><th>Short</th><th class="text-right">Players</th><th></th></tr></thead>
+        <tbody id="teams-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
 
@@ -77,8 +93,8 @@
     <div class="card">
       <h2 class="card-title">Players</h2>
       <table>
-        <thead><tr><th>Player</th><th>Role</th><th>Team</th><th></th></tr></thead>
-        <tbody id="players-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+        <thead><tr><th>Photo</th><th>Player</th><th>Role</th><th>Team</th><th></th></tr></thead>
+        <tbody id="players-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </main>
