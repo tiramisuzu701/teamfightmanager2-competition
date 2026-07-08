@@ -15,6 +15,14 @@ function currentPage() {
   return path;
 }
 
+// Supabase's onAuthStateChange fires once immediately upon subscribing (in
+// addition to on future changes) - so this must only ever be subscribed
+// once per page load. Subscribing again inside renderNav() itself would
+// mean every render adds another listener, and since each one fires right
+// away and calls renderNav() again, that becomes a runaway loop that
+// freezes the tab. A module-level flag keeps it to a single subscription.
+let authListenerRegistered = false;
+
 export async function renderNav(activeHref) {
   const root = document.getElementById("nav-root");
   if (!root) return;
@@ -68,5 +76,8 @@ export async function renderNav(activeHref) {
     root.after(banner);
   }
 
-  onAuthChange(() => renderNav(page));
+  if (!authListenerRegistered) {
+    authListenerRegistered = true;
+    onAuthChange(() => renderNav(page));
+  }
 }
