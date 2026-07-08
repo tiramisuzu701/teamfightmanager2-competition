@@ -1,18 +1,42 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
+import { loadSeasons, currentSeason, populateSeasonSelect } from "./seasons.js";
 
-renderNav("index.html");
+renderNav("standings.html");
 
 let rows = [];
 let sortKey = "win_pct";
 let sortDir = "desc";
+let selectedSeasonId = null;
+
+async function init() {
+  const seasonSelect = document.getElementById("season-select");
+  try {
+    const seasons = await loadSeasons();
+    const current = currentSeason(seasons);
+    selectedSeasonId = current?.id || null;
+    populateSeasonSelect(seasonSelect, seasons, selectedSeasonId);
+  } catch (err) {
+    console.error("Could not load seasons", err);
+  }
+  seasonSelect.addEventListener("change", () => {
+    selectedSeasonId = seasonSelect.value;
+    load();
+  });
+  load();
+}
 
 async function load() {
+  const body = document.getElementById("standings-body");
+  if (!selectedSeasonId) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">No season found yet.</td></tr>`;
+    return;
+  }
+
   const { data, error } = await supabase
     .from("team_standings")
-    .select("*");
-
-  const body = document.getElementById("standings-body");
+    .select("*")
+    .eq("season_id", selectedSeasonId);
 
   if (error) {
     body.innerHTML = `<tr><td colspan="6" class="empty-state">Could not load standings (${error.message}). Check js/config.js is set up - see SETUP.md.</td></tr>`;
@@ -78,4 +102,4 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-load();
+init();

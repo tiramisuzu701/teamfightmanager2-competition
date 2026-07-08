@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
+import { loadSeasons, currentSeason, populateSeasonSelect } from "./seasons.js";
 
 renderNav("players.html");
 
@@ -41,10 +42,36 @@ let mode = "all"; // 'all' | 'top10'
 let allSortKey = "kda";
 let allSortDir = "desc";
 let statSelectKey = STATS[0].key;
+let selectedSeasonId = null;
+
+async function init() {
+  const seasonSelect = document.getElementById("season-select");
+  try {
+    const seasons = await loadSeasons();
+    const current = currentSeason(seasons);
+    selectedSeasonId = current?.id || null;
+    populateSeasonSelect(seasonSelect, seasons, selectedSeasonId);
+  } catch (err) {
+    console.error("Could not load seasons", err);
+  }
+  seasonSelect.addEventListener("change", () => {
+    selectedSeasonId = seasonSelect.value;
+    load();
+  });
+  load();
+}
 
 async function load() {
-  const { data, error } = await supabase.from("player_stats_aggregate").select("*");
   const body = document.getElementById("players-body");
+  if (!selectedSeasonId) {
+    body.innerHTML = `<tr><td colspan="12" class="empty-state">No season found yet.</td></tr>`;
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("player_stats_aggregate")
+    .select("*")
+    .eq("season_id", selectedSeasonId);
   if (error) {
     body.innerHTML = `<tr><td colspan="12" class="empty-state">Could not load player stats (${error.message}). Check js/config.js - see SETUP.md.</td></tr>`;
     return;
@@ -179,4 +206,4 @@ function esc(str) {
   return div.innerHTML;
 }
 
-load();
+init();

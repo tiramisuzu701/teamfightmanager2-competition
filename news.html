@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>News - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">News &amp; Trades</h1>
+        <p class="page-subtitle">Roster moves and league announcements, newest first.</p>
+      </div>
+      <button class="btn btn-primary" id="post-news-btn" style="display:none">+ Post News</button>
+    </div>
+
+    <div class="card" id="post-news-card" style="display:none">
+      <h2 class="card-title">Post News</h2>
+      <div class="field">
+        <label for="news-type">Type</label>
+        <select id="news-type">
+          <option value="trade">Trade / roster move</option>
+          <option value="announcement">Announcement</option>
+        </select>
+      </div>
+
+      <div id="trade-fields">
+        <div class="field-row">
+          <div class="field">
+            <label for="trade-player">Player</label>
+            <select id="trade-player"><option value="">Select player...</option></select>
+          </div>
+          <div class="field">
+            <label for="trade-to-team">New team</label>
+            <select id="trade-to-team"><option value="">Select team...</option></select>
+          </div>
+        </div>
+        <p class="text-muted" style="font-size:0.78rem">The player's current team (if any) will automatically be recorded as who they're moving from, and their roster assignment will be updated.</p>
+      </div>
+
+      <div id="announcement-fields" style="display:none">
+        <div class="field">
+          <label for="ann-title">Title</label>
+          <input type="text" id="ann-title" placeholder="e.g. Season 2 rules update" />
+        </div>
+        <div class="field">
+          <label for="ann-body">Body (optional)</label>
+          <input type="text" id="ann-body" placeholder="Details..." />
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="submit-news-btn">Post</button>
+      <button class="btn btn-ghost" id="cancel-news-btn">Cancel</button>
+      <div id="news-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
+      <div id="news-feed"><p class="empty-state">Loading...</p></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/news.js"></script>
+</body>
+</html>

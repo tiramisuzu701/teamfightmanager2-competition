@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calendar - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">Schedule</h1>
+        <p class="page-subtitle">Upcoming and past games by month.</p>
+      </div>
+      <button class="btn btn-primary" id="new-schedule-btn" style="display:none">+ Schedule Game</button>
+    </div>
+
+    <div class="card" id="new-schedule-card" style="display:none">
+      <h2 class="card-title">Schedule a Game</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="s-team-a">Team A</label>
+          <select id="s-team-a"><option value="">Select team...</option></select>
+        </div>
+        <div class="field">
+          <label for="s-team-b">Team B</label>
+          <select id="s-team-b"><option value="">Select team...</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="s-date">Date</label>
+          <input type="date" id="s-date" />
+        </div>
+        <div class="field">
+          <label for="s-time">Time</label>
+          <input type="time" id="s-time" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="s-notes">Notes (optional)</label>
+        <input type="text" id="s-notes" placeholder="e.g. Week 4, best of 3" />
+      </div>
+      <button class="btn btn-primary" id="create-schedule-btn">Add to Calendar</button>
+      <button class="btn btn-ghost" id="cancel-schedule-btn">Cancel</button>
+      <div id="schedule-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="calendar-header">
+        <button class="btn btn-sm" id="prev-month-btn">&larr; Prev</button>
+        <h2 class="card-title" id="month-label" style="margin:0">Month</h2>
+        <button class="btn btn-sm" id="next-month-btn">Next &rarr;</button>
+      </div>
+      <div class="calendar-grid" id="calendar-dow"></div>
+      <div class="calendar-grid" id="calendar-grid" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card" id="day-detail-card" style="display:none">
+      <h2 class="card-title" id="day-detail-title">Games</h2>
+      <div id="day-detail-body"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/calendar.js"></script>
+</body>
+</html>

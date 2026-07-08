@@ -23,26 +23,43 @@ let teams = [];
 let players = [];
 let bracketMatches = [];
 let tournaments = [];
+let scheduledGames = [];
 let winnerSide = null; // 'a' | 'b'
 
 async function init() {
-  const [{ data: teamData }, { data: playerData }, { data: bmData }, { data: tData }] = await Promise.all([
+  const [{ data: teamData }, { data: playerData }, { data: bmData }, { data: tData }, { data: sgData }] = await Promise.all([
     supabase.from("teams").select("id, name").order("name"),
     supabase.from("players").select("id, name, role, team_id").order("name"),
     supabase.from("bracket_matches").select("id, tournament_id, bracket, group_name, round, match_number, team_a_id, team_b_id, status").in("status", ["pending", "in_progress"]),
     supabase.from("tournaments").select("id, name"),
+    supabase.from("scheduled_games").select("id, team_a_id, team_b_id, scheduled_at").eq("status", "scheduled").order("scheduled_at", { ascending: true }),
   ]);
 
   teams = teamData || [];
   players = playerData || [];
   bracketMatches = bmData || [];
   tournaments = tData || [];
+  scheduledGames = sgData || [];
 
   const teamAOptions = ['<option value="">Select team...</option>']
     .concat(teams.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`))
     .join("");
   document.getElementById("team-a").innerHTML = teamAOptions;
   document.getElementById("team-b").innerHTML = teamAOptions;
+
+  const sgSelect = document.getElementById("scheduled-game");
+  const sgOptions = ['<option value="">None - pick teams manually below</option>']
+    .concat(
+      scheduledGames.map((sg) => {
+        const aName = teams.find((t) => t.id === sg.team_a_id)?.name || "TBD";
+        const bName = teams.find((t) => t.id === sg.team_b_id)?.name || "TBD";
+        const when = new Date(sg.scheduled_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+        return `<option value="${sg.id}">${esc(when)} - ${esc(aName)} vs ${esc(bName)}</option>`;
+      })
+    )
+    .join("");
+  sgSelect.innerHTML = sgOptions;
+  sgSelect.addEventListener("change", onScheduledGameChanged);
 
   const bmSelect = document.getElementById("bracket-match");
   const bmOptions = ['<option value="">None - regular season / friendly</option>']
@@ -60,6 +77,16 @@ async function init() {
 
   document.getElementById("team-a").addEventListener("change", onTeamsChanged);
   document.getElementById("team-b").addEventListener("change", onTeamsChanged);
+}
+
+function onScheduledGameChanged() {
+  const sgId = document.getElementById("scheduled-game").value;
+  if (!sgId) return;
+  const sg = scheduledGames.find((s) => s.id === sgId);
+  if (!sg) return;
+  document.getElementById("team-a").value = sg.team_a_id;
+  document.getElementById("team-b").value = sg.team_b_id;
+  onTeamsChanged();
 }
 
 function bracketLabel(m) {
@@ -156,6 +183,7 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
   const duration = document.getElementById("duration").value || null;
   const notes = document.getElementById("notes").value || null;
   const bracketMatchId = document.getElementById("bracket-match").value || null;
+  const scheduledGameId = document.getElementById("scheduled-game").value || null;
 
   const playedRows = [...document.querySelectorAll("#rosters-container tr[data-player-id]")].filter(
     (row) => row.querySelector(".played-check").checked
@@ -194,6 +222,32 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
       if (statsError) throw statsError;
     }
 
+    if (scheduledGameId) {
+      const { error: sgError } = await supabase
+        .from("scheduled_games")
+        .update({ status: "completed", game_id: game.id })
+        .eq("id", scheduledGameId);
+      if (sgError) {
+        // The game itself saved fine - don't fail the whole submit over this,
+        // just let the admin know the calendar entry needs manual cleanup.
+        msg.textContent = "Game saved, but couldn't mark the scheduled game as completed: " + sgError.message;
+        msg.className = "form-msg error";
+        document.getElementById("submit-btn").disabled = false;
+        return;
+      }
+      scheduledGames = scheduledGames.filter((s) => s.id !== scheduledGameId);
+      document.getElementById("scheduled-game").innerHTML = ['<option value="">None - pick teams manually below</option>']
+        .concat(
+          scheduledGames.map((sg) => {
+            const aName = teams.find((t) => t.id === sg.team_a_id)?.name || "TBD";
+            const bName = teams.find((t) => t.id === sg.team_b_id)?.name || "TBD";
+            const when = new Date(sg.scheduled_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+            return `<option value="${sg.id}">${esc(when)} - ${esc(aName)} vs ${esc(bName)}</option>`;
+          })
+        )
+        .join("");
+    }
+
     msg.textContent = "Game saved! Standings and player stats have been updated.";
     msg.className = "form-msg success";
     document.getElementById("team-a").value = "";
@@ -201,6 +255,7 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
     document.getElementById("duration").value = "";
     document.getElementById("notes").value = "";
     document.getElementById("bracket-match").value = "";
+    document.getElementById("scheduled-game").value = "";
     onTeamsChanged();
   } catch (err) {
     msg.textContent = "Error saving game: " + err.message;

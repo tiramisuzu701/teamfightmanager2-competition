@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Predictions - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">Today's Predictions</h1>
+    <p class="page-subtitle">Pick the winner of tonight's games. Predictions lock 30 minutes before each game starts.</p>
+
+    <div class="card">
+      <label for="predictor-name">Your name</label>
+      <div class="field-row">
+        <input type="text" id="predictor-name" placeholder="Enter a display name to make picks" />
+      </div>
+      <p class="text-muted" style="font-size:0.78rem;margin-top:8px">
+        No account needed - just type a name once and it's remembered on this device. Anyone using the same name shares the same picks, so pick something unique to you.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Today's Games</h2>
+      <div id="games-list"><p class="empty-state">Loading...</p></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Prediction Leaderboard</h2>
+      <table>
+        <thead><tr><th>#</th><th>Predictor</th><th class="text-right">Correct</th><th class="text-right">Total</th><th class="text-right">Accuracy</th></tr></thead>
+        <tbody id="leaderboard-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/predictions.js"></script>
+</body>
+</html>

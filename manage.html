@@ -15,6 +15,22 @@
     <p class="page-subtitle">Admin only. Add or remove teams and players here - they'll immediately show up everywhere else on the site.</p>
 
     <div class="card">
+      <h2 class="card-title">Seasons</h2>
+      <p class="text-muted" style="font-size:0.85rem" id="current-season-line">Loading current season...</p>
+      <p class="text-muted" style="font-size:0.78rem">
+        Starting a new season keeps every past game, team record, and player stat exactly as they are (browsable via the season picker on Standings/Players) and resets the current Standings/Players view to zero for the new season.
+      </p>
+      <div class="field-row">
+        <div class="field">
+          <label for="new-season-name">New season name</label>
+          <input type="text" id="new-season-name" placeholder="e.g. Season 2" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="start-season-btn">Start New Season</button>
+      <div id="season-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
       <h2 class="card-title">Add a Team</h2>
       <div class="field-row">
         <div class="field">

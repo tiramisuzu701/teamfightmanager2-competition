@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Standings - Teamfight Manager 2 League</title>
+<title>Home - Teamfight Manager 2 League</title>
 <link rel="icon" href="data:," />
 <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -11,30 +11,54 @@
   <div id="nav-root"></div>
 
   <main>
-    <h1 class="page-title">League Standings</h1>
-    <p class="page-subtitle">Team records for the current Teamfight Manager 2 season.</p>
+    <div class="card" id="welcome-card">
+      <h1 class="page-title" id="welcome-title">Welcome</h1>
+      <p class="page-subtitle" id="welcome-subtitle">Loading league overview...</p>
+    </div>
 
-    <div class="card">
-      <table id="standings-table">
-        <thead>
-          <tr>
-            <th data-key="rank">#</th>
-            <th data-key="name">Team</th>
-            <th data-key="wins" class="text-right">W</th>
-            <th data-key="losses" class="text-right">L</th>
-            <th data-key="games_played" class="text-right">Games</th>
-            <th data-key="win_pct" class="text-right sorted">Win %</th>
-          </tr>
-        </thead>
-        <tbody id="standings-body">
-          <tr><td colspan="6" class="empty-state">Loading standings...</td></tr>
-        </tbody>
-      </table>
+    <div class="home-grid">
+      <div class="card">
+        <div class="stat-toggle-row" style="margin-bottom:12px">
+          <h2 class="card-title" style="margin:0">Upcoming Games</h2>
+          <a href="calendar.html" class="btn btn-ghost btn-sm">Full calendar</a>
+        </div>
+        <div id="upcoming-games"><p class="empty-state">Loading...</p></div>
+      </div>
+
+      <div class="card">
+        <div class="stat-toggle-row" style="margin-bottom:12px">
+          <h2 class="card-title" style="margin:0">Recent News</h2>
+          <a href="news.html" class="btn btn-ghost btn-sm">Full news board</a>
+        </div>
+        <div id="recent-news"><p class="empty-state">Loading...</p></div>
+      </div>
+
+      <div class="card">
+        <div class="stat-toggle-row" style="margin-bottom:12px">
+          <h2 class="card-title" style="margin:0">Standings Snapshot</h2>
+          <a href="standings.html" class="btn btn-ghost btn-sm">Full standings</a>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Team</th><th class="text-right">W</th><th class="text-right">L</th><th class="text-right">Win %</th></tr></thead>
+          <tbody id="standings-snapshot"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="stat-toggle-row" style="margin-bottom:12px">
+          <h2 class="card-title" style="margin:0">Top Players (KDA)</h2>
+          <a href="players.html" class="btn btn-ghost btn-sm">Full leaderboards</a>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Player</th><th>Team</th><th class="text-right">KDA</th></tr></thead>
+          <tbody id="players-snapshot"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </main>
 
   <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
 
-  <script type="module" src="js/standings.js"></script>
+  <script type="module" src="js/home.js"></script>
 </body>
 </html>

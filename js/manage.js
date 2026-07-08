@@ -1,12 +1,54 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
 import { requireAdmin } from "./auth.js";
+import { loadSeasons, currentSeason, startNewSeason } from "./seasons.js";
 
 renderNav("manage.html");
 const session = await requireAdmin();
 
 let teams = [];
 let players = [];
+
+async function loadSeasonInfo() {
+  const line = document.getElementById("current-season-line");
+  try {
+    const seasons = await loadSeasons();
+    const current = currentSeason(seasons);
+    line.textContent = current
+      ? `Current season: ${current.name} (started ${new Date(current.started_at).toLocaleDateString()})`
+      : "No season found.";
+  } catch (err) {
+    line.textContent = "Could not load season info: " + err.message;
+  }
+}
+
+document.getElementById("start-season-btn").addEventListener("click", async () => {
+  const msg = document.getElementById("season-msg");
+  const name = document.getElementById("new-season-name").value.trim();
+  if (!name) {
+    msg.textContent = "Season name is required.";
+    msg.className = "form-msg error";
+    return;
+  }
+  const ok = window.confirm(
+    `Start "${name}" as the new current season? Standings and Players will reset to zero going forward - all past games and stats stay intact and browsable via the season picker.`
+  );
+  if (!ok) return;
+
+  msg.textContent = "Saving...";
+  msg.className = "form-msg";
+  try {
+    await startNewSeason(name);
+  } catch (err) {
+    msg.textContent = "Error: " + err.message;
+    msg.className = "form-msg error";
+    return;
+  }
+  document.getElementById("new-season-name").value = "";
+  msg.textContent = "New season started!";
+  msg.className = "form-msg success";
+  await loadSeasonInfo();
+});
 
 async function loadAll() {
   const [{ data: teamData, error: tErr }, { data: playerData, error: pErr }] = await Promise.all([
@@ -149,4 +191,7 @@ function esc(str) {
   return div.innerHTML;
 }
 
-if (session) loadAll();
+if (session) {
+  loadAll();
+  loadSeasonInfo();
+}

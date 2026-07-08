@@ -11,8 +11,16 @@
   <div id="nav-root"></div>
 
   <main>
-    <h1 class="page-title">Player Statistics</h1>
-    <p class="page-subtitle">Season totals, averages, and leaderboards for every player.</p>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">Player Statistics</h1>
+        <p class="page-subtitle">Totals, averages, and leaderboards for every player in the selected season.</p>
+      </div>
+      <div style="min-width:200px">
+        <label for="season-select">Season</label>
+        <select id="season-select"></select>
+      </div>
+    </div>
 
     <div class="stat-toggle-row">
       <div class="pill-group" id="leaderboard-pills"></div>

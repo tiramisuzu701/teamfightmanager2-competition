@@ -84,14 +84,35 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 
 ## Day-to-day use once it's live
 
-- **Manage tab**: add/remove teams and players.
+- **Manage tab**: add/remove teams and players, and start a new season
+  when you're ready to move on from the current one.
+- **Calendar tab**: schedule upcoming games (pick two teams, a date/time,
+  optional notes). Anyone can browse the month-by-month schedule; only
+  admins see the "+ Schedule Game" button and can cancel a scheduled game.
 - **Log Game tab**: after each game, log the winner and each player's stats.
-  Standings and player leaderboards update immediately.
+  If the game was on the calendar, pick it from the "Link to scheduled
+  game" dropdown first - it auto-fills the teams and marks that calendar
+  entry as completed. Standings and player leaderboards update immediately.
+- **Predictions tab**: open to everyone, no login required - visitors type
+  a display name once (remembered on their device) and pick winners for
+  the day's games. Picks lock 30 minutes before each game starts, and a
+  leaderboard tracks who predicts best over time.
+- **News tab**: admins can log a trade (pick a player and their new team -
+  this also updates the player's roster assignment automatically) or post
+  a free-form announcement. Everyone sees the combined feed, newest first,
+  and the 5 most recent items also show up on the Home page.
 - **Brackets tab**: create a double-elimination or round-robin tournament
   from your teams, and report results as they happen - the bracket
   advances itself automatically.
+- **Starting a new season** (Manage tab): give it a name (e.g. "Season 2")
+  and confirm. This ends the current season and starts a fresh one -
+  Standings and Players immediately reset to 0-0-0 for the new season, but
+  every past game, team record, and player stat stays intact and can still
+  be viewed any time via the season-picker dropdown on the Standings and
+  Players pages.
 - Only people logged in with an admin account (created in step 2) can do
-  any of the above; everyone else sees a read-only public site.
+  any of the above admin-only actions; everyone else sees a read-only
+  public site (except for making predictions, which never requires login).
 
 ## Notes and limitations
 
@@ -104,6 +125,10 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 - **Team/player deletion**: deleting a team keeps its players (they become
   unassigned) and keeps historical stats intact. Deleting a player removes
   their logged game stats along with them.
+- **Predictions identity**: predictions use a simple typed display name,
+  not a real account - anyone who types the same name as someone else
+  shares that person's picks and leaderboard record, so encourage your
+  league to each pick something unique.
 - Want more stat columns, a different color scheme, or another tab? Just
   ask - the codebase is plain HTML/CSS/JS with no build step, so changes
   are quick to make.

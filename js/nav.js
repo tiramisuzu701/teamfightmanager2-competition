@@ -3,9 +3,13 @@ import { LEAGUE_NAME } from "./config.js";
 import { isConfigured } from "./supabaseClient.js";
 
 const TABS = [
-  { href: "index.html", label: "Standings" },
+  { href: "index.html", label: "Home" },
+  { href: "standings.html", label: "Standings" },
   { href: "players.html", label: "Players" },
+  { href: "calendar.html", label: "Calendar" },
+  { href: "predictions.html", label: "Predictions" },
   { href: "brackets.html", label: "Brackets" },
+  { href: "news.html", label: "News" },
   { href: "log-game.html", label: "Log Game" },
   { href: "manage.html", label: "Manage", adminOnly: true },
 ];
