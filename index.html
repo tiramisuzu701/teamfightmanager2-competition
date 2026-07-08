@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Standings - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">League Standings</h1>
+    <p class="page-subtitle">Team records for the current Teamfight Manager 2 season.</p>
+
+    <div class="card">
+      <table id="standings-table">
+        <thead>
+          <tr>
+            <th data-key="rank">#</th>
+            <th data-key="name">Team</th>
+            <th data-key="wins" class="text-right">W</th>
+            <th data-key="losses" class="text-right">L</th>
+            <th data-key="games_played" class="text-right">Games</th>
+            <th data-key="win_pct" class="text-right sorted">Win %</th>
+          </tr>
+        </thead>
+        <tbody id="standings-body">
+          <tr><td colspan="6" class="empty-state">Loading standings...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/standings.js"></script>
+</body>
+</html>

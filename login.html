@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Login - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="login-wrap card">
+      <h1 class="page-title" style="font-size:1.3rem">Admin Login</h1>
+      <p class="page-subtitle" style="margin-bottom:20px">Sign in to log games and manage brackets.</p>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Log In</button>
+        <div id="form-msg" class="form-msg"></div>
+      </form>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:20px">
+        Admin accounts are created in your Supabase dashboard under
+        Authentication &rarr; Users - there is no public sign-up on this site.
+      </p>
+    </div>
+  </main>
+
+  <script type="module" src="js/loginPage.js"></script>
+</body>
+</html>

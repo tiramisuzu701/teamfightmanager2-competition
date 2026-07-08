@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Player Stats - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">Player Statistics</h1>
+    <p class="page-subtitle">Season totals, averages, and leaderboards for every player.</p>
+
+    <div class="stat-toggle-row">
+      <div class="pill-group" id="leaderboard-pills"></div>
+      <div style="min-width:200px">
+        <select id="stat-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title" id="table-heading">All Players</h2>
+      <table id="players-table">
+        <thead>
+          <tr id="players-head-row"></tr>
+        </thead>
+        <tbody id="players-body">
+          <tr><td colspan="12" class="empty-state">Loading player stats...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/players.js"></script>
+</body>
+</html>

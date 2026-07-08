@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Teams &amp; Players - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">Manage Teams &amp; Players</h1>
+    <p class="page-subtitle">Admin only. Add or remove teams and players here - they'll immediately show up everywhere else on the site.</p>
+
+    <div class="card">
+      <h2 class="card-title">Add a Team</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="new-team-name">Team name</label>
+          <input type="text" id="new-team-name" placeholder="e.g. Phoenix Talons" />
+        </div>
+        <div class="field">
+          <label for="new-team-short">Short name (optional)</label>
+          <input type="text" id="new-team-short" placeholder="e.g. PTX" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="add-team-btn">Add Team</button>
+      <div id="team-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Teams</h2>
+      <table>
+        <thead><tr><th>Team</th><th>Short</th><th class="text-right">Players</th><th></th></tr></thead>
+        <tbody id="teams-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Add a Player</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="new-player-name">Player name</label>
+          <input type="text" id="new-player-name" placeholder="e.g. Aeris" />
+        </div>
+        <div class="field">
+          <label for="new-player-role">Role (optional)</label>
+          <input type="text" id="new-player-role" placeholder="e.g. Carry" />
+        </div>
+        <div class="field">
+          <label for="new-player-team">Team</label>
+          <select id="new-player-team"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="add-player-btn">Add Player</button>
+      <div id="player-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Players</h2>
+      <table>
+        <thead><tr><th>Player</th><th>Role</th><th>Team</th><th></th></tr></thead>
+        <tbody id="players-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/manage.js"></script>
+</body>
+</html>

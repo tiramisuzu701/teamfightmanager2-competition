@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brackets - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">Tournament Brackets</h1>
+    <p class="page-subtitle">Double-elimination and round-robin/group tournaments for the league.</p>
+
+    <div class="card">
+      <div class="stat-toggle-row">
+        <div style="min-width:240px">
+          <label for="tournament-select">Tournament</label>
+          <select id="tournament-select"><option value="">No tournaments yet</option></select>
+        </div>
+        <button class="btn btn-primary" id="new-tournament-btn" style="display:none">+ New Tournament</button>
+      </div>
+    </div>
+
+    <div class="card" id="new-tournament-card" style="display:none">
+      <h2 class="card-title">Create Tournament</h2>
+      <div class="field">
+        <label for="t-name">Tournament name</label>
+        <input type="text" id="t-name" placeholder="e.g. Season 1 Playoffs" />
+      </div>
+      <div class="field">
+        <label for="t-format">Format</label>
+        <select id="t-format">
+          <option value="double_elimination">Double Elimination</option>
+          <option value="round_robin">Round Robin / Group Stage</option>
+        </select>
+      </div>
+      <div class="field" id="rr-options" style="display:none">
+        <div class="field-row">
+          <div class="field">
+            <label for="t-groups">Number of groups</label>
+            <input type="number" id="t-groups" min="1" value="1" />
+          </div>
+          <div class="field">
+            <label for="t-double"><input type="checkbox" id="t-double" style="width:auto;display:inline-block;margin-right:6px" />Double round-robin (home &amp; away)</label>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Teams in this tournament (in seed order for double elimination - best team first)</label>
+        <div id="team-checkboxes" class="card" style="background:var(--bg);max-height:260px;overflow-y:auto"></div>
+      </div>
+      <button class="btn btn-primary" id="create-tournament-btn">Create Bracket</button>
+      <button class="btn btn-ghost" id="cancel-tournament-btn">Cancel</button>
+      <div id="create-msg" class="form-msg"></div>
+    </div>
+
+    <div id="bracket-display">
+      <div class="empty-state">Select a tournament above, or create a new one.</div>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/brackets.js"></script>
+</body>
+</html>
