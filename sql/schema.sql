@@ -101,25 +101,37 @@ create table if not exists bracket_matches (
 create index if not exists idx_bracket_matches_tournament on bracket_matches(tournament_id);
 
 -- ----------------------------------------------------------------------------
--- SCHEDULED GAMES (calendar)
+-- MATCHES (a best-of-3/5/7 "set" - this is the unit that counts toward
+-- standings. Scheduling a match on the Calendar creates a 'scheduled' row
+-- here with no games yet; logging its first game flips it to 'in_progress';
+-- it becomes 'completed' automatically once a team reaches the majority of
+-- best_of, or an admin can end it early (forfeit/no-show) via ended_early.
 -- ----------------------------------------------------------------------------
-create table if not exists scheduled_games (
+create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
   season_id uuid references seasons(id) default current_season_id(),
   team_a_id uuid not null references teams(id),
   team_b_id uuid not null references teams(id),
-  scheduled_at timestamptz not null,
+  best_of int not null default 3 check (best_of in (3, 5, 7)),
+  status text not null default 'scheduled' check (status in ('scheduled', 'in_progress', 'completed', 'cancelled')),
+  winner_id uuid references teams(id) check (winner_id is null or winner_id = team_a_id or winner_id = team_b_id),
+  team_a_wins int not null default 0 check (team_a_wins >= 0),
+  team_b_wins int not null default 0 check (team_b_wins >= 0),
+  ended_early boolean not null default false,
+  scheduled_at timestamptz,
   bracket_match_id uuid references bracket_matches(id),
-  game_id uuid,  -- FK added below, after the games table exists
-  status text not null default 'scheduled' check (status in ('scheduled', 'completed', 'cancelled')),
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
 );
 
-create index if not exists idx_scheduled_games_time on scheduled_games(scheduled_at);
+create index if not exists idx_matches_season on matches(season_id);
+create index if not exists idx_matches_scheduled_at on matches(scheduled_at);
+create index if not exists idx_matches_status on matches(status);
+create index if not exists idx_matches_bracket_match on matches(bracket_match_id);
 
 -- ----------------------------------------------------------------------------
--- GAMES (one row per logged game)
+-- GAMES (one row per individually logged game within a match)
 -- ----------------------------------------------------------------------------
 create table if not exists games (
   id uuid primary key default gen_random_uuid(),
@@ -129,15 +141,16 @@ create table if not exists games (
   winner_id uuid references teams(id),
   duration_minutes numeric,
   bracket_match_id uuid references bracket_matches(id),
+  match_id uuid references matches(id) on delete cascade,
+  game_number int check (game_number is null or game_number > 0),
   season_id uuid references seasons(id) default current_season_id(),
   notes text,
   created_at timestamptz not null default now()
 );
 
 create index if not exists idx_games_bracket_match on games(bracket_match_id);
-
-alter table scheduled_games add constraint scheduled_games_game_id_fkey
-  foreign key (game_id) references games(id);
+create index if not exists idx_games_match on games(match_id);
+create unique index if not exists idx_games_match_game_number on games(match_id, game_number) where match_id is not null;
 
 -- ----------------------------------------------------------------------------
 -- GAME_PLAYER_STATS (one row per player per game)
@@ -164,18 +177,18 @@ create index if not exists idx_gps_player on game_player_stats(player_id);
 
 -- ----------------------------------------------------------------------------
 -- PREDICTIONS
--- Public (no login) can predict, identified only by a self-chosen display
--- name, up until 30 minutes before the scheduled game time (enforced by RLS
--- below, not just the frontend).
+-- Public (no login) can predict a match's winner, identified only by a
+-- self-chosen display name, up until 30 minutes before the match's scheduled
+-- time (enforced by RLS below, not just the frontend).
 -- ----------------------------------------------------------------------------
 create table if not exists predictions (
   id uuid primary key default gen_random_uuid(),
-  scheduled_game_id uuid not null references scheduled_games(id) on delete cascade,
+  match_id uuid not null references matches(id) on delete cascade,
   predictor_name text not null,
   predicted_team_id uuid not null references teams(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (scheduled_game_id, predictor_name)
+  unique (match_id, predictor_name)
 );
 
 -- ----------------------------------------------------------------------------
@@ -221,6 +234,12 @@ insert into league_settings (id) values (true) on conflict (id) do nothing;
 -- Both standings views are cross-joined against `seasons` so every team/
 -- player gets a row (even a 0-0-0 one) for every season, letting the
 -- frontend filter to whichever season is selected with a plain .eq().
+--
+-- team_standings counts wins/losses at MATCH (best-of-N set) granularity -
+-- winning a match is 1 win regardless of whether it was decided 2-0 or 2-1.
+-- games_won/games_lost/game_diff separately total up the individual games
+-- within those matches (e.g. a team that wins every match 2-1 has a great
+-- record but a modest game differential).
 
 create or replace view team_standings
 with (security_invoker = true) as
@@ -231,16 +250,25 @@ select
   t.logo_url,
   s.id as season_id,
   s.name as season_name,
-  count(g.id) filter (where g.winner_id is not null)::int as games_played,
-  count(g.id) filter (where g.winner_id = t.id)::int as wins,
-  count(g.id) filter (where g.winner_id is not null and g.winner_id <> t.id)::int as losses,
+  count(m.id) filter (where m.status = 'completed')::int as matches_played,
+  count(m.id) filter (where m.status = 'completed' and m.winner_id = t.id)::int as wins,
+  count(m.id) filter (where m.status = 'completed' and m.winner_id is not null and m.winner_id <> t.id)::int as losses,
   round(
-    100.0 * count(g.id) filter (where g.winner_id = t.id) /
-    nullif(count(g.id) filter (where g.winner_id is not null), 0), 1
-  )::float8 as win_pct
+    100.0 * count(m.id) filter (where m.status = 'completed' and m.winner_id = t.id) /
+    nullif(count(m.id) filter (where m.status = 'completed'), 0), 1
+  )::float8 as win_pct,
+  coalesce(sum(case when m.status = 'completed' and m.team_a_id = t.id then m.team_a_wins
+                     when m.status = 'completed' and m.team_b_id = t.id then m.team_b_wins
+                     else 0 end), 0)::int as games_won,
+  coalesce(sum(case when m.status = 'completed' and m.team_a_id = t.id then m.team_b_wins
+                     when m.status = 'completed' and m.team_b_id = t.id then m.team_a_wins
+                     else 0 end), 0)::int as games_lost,
+  coalesce(sum(case when m.status = 'completed' and m.team_a_id = t.id then m.team_a_wins - m.team_b_wins
+                     when m.status = 'completed' and m.team_b_id = t.id then m.team_b_wins - m.team_a_wins
+                     else 0 end), 0)::int as game_diff
 from teams t
 cross join seasons s
-left join games g on (g.team_a_id = t.id or g.team_b_id = t.id) and g.season_id = s.id
+left join matches m on (m.team_a_id = t.id or m.team_b_id = t.id) and m.season_id = s.id
 group by t.id, t.name, t.short_name, t.logo_url, s.id, s.name;
 
 create or replace view player_stats_aggregate
@@ -286,15 +314,14 @@ create or replace view prediction_leaderboard
 with (security_invoker = true) as
 select
   pr.predictor_name,
-  count(*) filter (where sg.status = 'completed')::int as total_predictions,
-  count(*) filter (where sg.status = 'completed' and pr.predicted_team_id = g.winner_id)::int as correct_predictions,
+  count(*) filter (where m.status = 'completed')::int as total_predictions,
+  count(*) filter (where m.status = 'completed' and pr.predicted_team_id = m.winner_id)::int as correct_predictions,
   round(
-    100.0 * count(*) filter (where sg.status = 'completed' and pr.predicted_team_id = g.winner_id) /
-    nullif(count(*) filter (where sg.status = 'completed'), 0), 1
+    100.0 * count(*) filter (where m.status = 'completed' and pr.predicted_team_id = m.winner_id) /
+    nullif(count(*) filter (where m.status = 'completed'), 0), 1
   )::float8 as accuracy_pct
 from predictions pr
-join scheduled_games sg on sg.id = pr.scheduled_game_id
-left join games g on g.id = sg.game_id
+join matches m on m.id = pr.match_id
 group by pr.predictor_name;
 
 -- ============================================================================
@@ -311,7 +338,7 @@ alter table players enable row level security;
 alter table seasons enable row level security;
 alter table tournaments enable row level security;
 alter table bracket_matches enable row level security;
-alter table scheduled_games enable row level security;
+alter table matches enable row level security;
 alter table games enable row level security;
 alter table game_player_stats enable row level security;
 alter table predictions enable row level security;
@@ -324,7 +351,7 @@ create policy "public read players" on players for select using (true);
 create policy "public read seasons" on seasons for select using (true);
 create policy "public read tournaments" on tournaments for select using (true);
 create policy "public read bracket_matches" on bracket_matches for select using (true);
-create policy "public read scheduled_games" on scheduled_games for select using (true);
+create policy "public read matches" on matches for select using (true);
 create policy "public read games" on games for select using (true);
 create policy "public read game_player_stats" on game_player_stats for select using (true);
 create policy "public read predictions" on predictions for select using (true);
@@ -351,9 +378,9 @@ create policy "admin write bracket_matches" on bracket_matches for insert with c
 create policy "admin update bracket_matches" on bracket_matches for update using (auth.role() = 'authenticated');
 create policy "admin delete bracket_matches" on bracket_matches for delete using (auth.role() = 'authenticated');
 
-create policy "admin write scheduled_games" on scheduled_games for insert with check (auth.role() = 'authenticated');
-create policy "admin update scheduled_games" on scheduled_games for update using (auth.role() = 'authenticated');
-create policy "admin delete scheduled_games" on scheduled_games for delete using (auth.role() = 'authenticated');
+create policy "admin write matches" on matches for insert with check (auth.role() = 'authenticated');
+create policy "admin update matches" on matches for update using (auth.role() = 'authenticated');
+create policy "admin delete matches" on matches for delete using (auth.role() = 'authenticated');
 
 create policy "admin write games" on games for insert with check (auth.role() = 'authenticated');
 create policy "admin update games" on games for update using (auth.role() = 'authenticated');
@@ -367,32 +394,36 @@ create policy "admin write news_items" on news_items for insert with check (auth
 create policy "admin update news_items" on news_items for update using (auth.role() = 'authenticated');
 create policy "admin delete news_items" on news_items for delete using (auth.role() = 'authenticated');
 
--- Predictions: anyone can insert/update their own pick up until 30 minutes
--- before the scheduled game time; only admin can delete (e.g. spam cleanup).
+-- Predictions: anyone can insert/update their own pick (on the match winner)
+-- up until 30 minutes before the match's scheduled time; only admin can
+-- delete (e.g. spam cleanup).
 create policy "public insert predictions before lock" on predictions for insert to anon, authenticated
   with check (
     exists (
-      select 1 from scheduled_games sg
-      where sg.id = scheduled_game_id
-        and sg.status = 'scheduled'
-        and now() < sg.scheduled_at - interval '30 minutes'
+      select 1 from matches m
+      where m.id = match_id
+        and m.status = 'scheduled'
+        and m.scheduled_at is not null
+        and now() < m.scheduled_at - interval '30 minutes'
     )
   );
 create policy "public update own predictions before lock" on predictions for update to anon, authenticated
   using (
     exists (
-      select 1 from scheduled_games sg
-      where sg.id = scheduled_game_id
-        and sg.status = 'scheduled'
-        and now() < sg.scheduled_at - interval '30 minutes'
+      select 1 from matches m
+      where m.id = match_id
+        and m.status = 'scheduled'
+        and m.scheduled_at is not null
+        and now() < m.scheduled_at - interval '30 minutes'
     )
   )
   with check (
     exists (
-      select 1 from scheduled_games sg
-      where sg.id = scheduled_game_id
-        and sg.status = 'scheduled'
-        and now() < sg.scheduled_at - interval '30 minutes'
+      select 1 from matches m
+      where m.id = match_id
+        and m.status = 'scheduled'
+        and m.scheduled_at is not null
+        and now() < m.scheduled_at - interval '30 minutes'
     )
   );
 create policy "admin delete predictions" on predictions for delete using (auth.role() = 'authenticated');
@@ -410,11 +441,11 @@ create policy "public read rules" on league_settings for select to anon using (t
 -- Explicit grants (Supabase usually sets these up, but this makes it explicit)
 grant select on team_standings, player_stats_aggregate, prediction_leaderboard to anon, authenticated;
 grant select, insert, update, delete on
-  teams, players, seasons, tournaments, bracket_matches, scheduled_games,
+  teams, players, seasons, tournaments, bracket_matches, matches,
   games, game_player_stats, news_items
   to authenticated;
 grant select on
-  teams, players, seasons, tournaments, bracket_matches, scheduled_games,
+  teams, players, seasons, tournaments, bracket_matches, matches,
   games, game_player_stats, news_items
   to anon;
 grant select, insert, update on predictions to anon;

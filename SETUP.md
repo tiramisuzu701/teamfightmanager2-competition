@@ -53,7 +53,7 @@ npx serve .
 
 Then visit `http://localhost:8080` in your browser. Log in at `/login.html`
 with the admin account you created in step 2, add a team or two on the
-**Manage** tab, add some players, and log a test game.
+**Manage** tab, add some players, and log a test match.
 
 ## 5. Publish it for free on GitHub Pages
 
@@ -78,7 +78,7 @@ with the admin account you created in step 2, add a team or two on the
 
 Whenever you want to change the site's look or add a feature, edit the
 files and push again - GitHub Pages redeploys automatically on every push.
-Adding teams, players, games, and tournaments is all done live on the
+Adding teams, players, matches, and tournaments is all done live on the
 deployed site itself (via the Manage / Log Game / Brackets tabs while
 logged in) - you never need to touch GitHub for day-to-day league admin.
 
@@ -87,17 +87,26 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 - **Manage tab**: add/remove teams and players, upload a logo/photo for
   each (click "Upload" next to a team or player row), start a new season,
   and set an optional Discord webhook URL for auto-announcements.
-- **Calendar tab**: schedule upcoming games (pick two teams, a date/time,
-  optional notes). Anyone can browse the month-by-month schedule; only
-  admins see the "+ Schedule Game" button and can cancel a scheduled game.
-- **Log Game tab**: after each game, log the winner and each player's stats.
-  If the game was on the calendar, pick it from the "Link to scheduled
-  game" dropdown first - it auto-fills the teams and marks that calendar
-  entry as completed. Standings and player leaderboards update immediately,
-  and (if a Discord webhook is set) the result posts to your channel.
+- **Calendar tab**: schedule upcoming matches (pick two teams, a best-of
+  format - 3, 5, or 7 - a date/time, optional notes). Anyone can browse the
+  month-by-month schedule; only admins see the "+ Schedule Match" button
+  and can cancel a scheduled match.
+- **Log Game tab**: matches are played in sets of 3, 5, or 7 games. Pick a
+  scheduled match to continue (or start a new one on the spot by choosing
+  two teams and a best-of format), then log each game's winner and each
+  player's stats as it's played. The match completes itself automatically
+  the moment a team wins the majority (e.g. 2 of 3) - you never need to log
+  a game that wasn't actually played. If a match needs to end before it's
+  decided (a forfeit or no-show), hit "End Match Now" and pick the winner
+  directly. Standings, Game Difference, and player leaderboards all update
+  as soon as a match completes, and (if a Discord webhook is set) the
+  result posts to your channel.
+- **Match pages**: click any match - from Standings, a Team page, the
+  Calendar, or right after logging one - to see its full series score and
+  every individual game's box score (per-player kills/deaths/assists/etc.).
 - **Predictions tab**: open to everyone, no login required - visitors type
   a display name once (remembered on their device) and pick winners for
-  the day's games. Picks lock 30 minutes before each game starts, and a
+  the day's matches. Picks lock 30 minutes before each match starts, and a
   leaderboard tracks who predicts best over time.
 - **News tab**: admins can log a trade (pick a player and their new team -
   this also updates the player's roster assignment automatically) or post
@@ -110,22 +119,23 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
   creating a tournament to auto-order teams by the current season's win %
   instead of picking the order by hand.
 - **Records tab**: single-game bests (most kills, best KDA, most damage,
-  etc.) and the longest team win streak, browsable all-time or by season -
-  updates automatically as games are logged, no admin action needed.
+  etc.) and the longest team win streak (consecutive match wins), browsable
+  all-time or by season - updates automatically as matches are logged, no
+  admin action needed.
 - **Rules tab**: a public page for your league's rules/handbook. Admins see
   an "Edit" button to write or update it directly on the site - no code
   or GitHub push required.
 - **Team and player pages**: click any team or player name anywhere on the
-  site to open their profile - roster, record, recent games, and
-  head-to-head for teams; season stats, a KDA trend chart, and full game
-  log for players.
+  site to open their profile - roster, match record (wins, losses, matches
+  played, game difference), recent matches, and head-to-head for teams;
+  season stats, a KDA trend chart, and full per-game log for players.
 - **Theme toggle**: the sun/moon button in the nav switches between dark
   and light mode; it's remembered per visitor's browser.
 - **Starting a new season** (Manage tab): give it a name (e.g. "Season 2")
   and confirm. This ends the current season and starts a fresh one -
   Standings and Players immediately reset to 0-0-0 for the new season, but
-  every past game, team record, and player stat stays intact and can still
-  be viewed any time via the season-picker dropdown on the Standings,
+  every past match/game, team record, and player stat stays intact and can
+  still be viewed any time via the season-picker dropdown on the Standings,
   Players, and Records pages.
 - Only people logged in with an admin account (created in step 2) can do
   any of the above admin-only actions; everyone else sees a read-only
@@ -137,7 +147,7 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
    Webhooks -> New Webhook**, pick the channel you want announcements in,
    and copy the webhook URL.
 2. Paste it into the **Integrations** card on the **Manage** tab and save.
-3. From then on, every logged game and every posted news item (trade or
+3. From then on, every completed match and every posted news item (trade or
    announcement) will automatically post a short message to that channel.
    Leave the field blank at any time to turn this off.
 
@@ -156,12 +166,18 @@ holding it could post into your channel.
   to spotlight a standout performer, not serve as an official award.
 - **League Records**: recalculated live from all logged games every time
   you open the page - there's nothing to "reset" and no separate records
-  table to maintain.
+  table to maintain. Single-game bests stay per-game; the win streak is
+  per-match.
+- **Matches vs. tournament brackets**: the best-of-N match/game system
+  above is for regular-season play only. Tournament brackets (`brackets.html`)
+  are a separate, existing system where an admin reports a match's final
+  score directly - they aren't currently built from a logged set of
+  individual games the way regular-season matches are.
 - **Bracket resets**: in double elimination, if the team coming from the
   losers' bracket wins the Grand Final, true double-elimination rules say
   a single deciding match should be played (since both finalists would now
   have exactly one loss). This site doesn't auto-generate that reset match
-  for you - if it happens, just log the decider as a follow-up game and
+  for you - if it happens, just log the decider as a follow-up match and
   note it in your standings/announcements.
 - **Team/player deletion**: deleting a team keeps its players (they become
   unassigned) and keeps historical stats intact. Deleting a player removes

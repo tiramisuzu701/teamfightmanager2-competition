@@ -7,7 +7,7 @@ renderNav("calendar.html");
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 let viewDate = startOfMonth(new Date());
-let games = [];
+let matches = [];
 let teams = [];
 let teamsById = {};
 let isAdmin = false;
@@ -58,7 +58,7 @@ async function loadMonth() {
   const monthEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
 
   const { data, error } = await supabase
-    .from("scheduled_games")
+    .from("matches")
     .select("*")
     .gte("scheduled_at", monthStart.toISOString())
     .lt("scheduled_at", monthEnd.toISOString())
@@ -68,7 +68,7 @@ async function loadMonth() {
     grid.innerHTML = `<div class="empty-state">Could not load schedule (${esc(error.message)}).</div>`;
     return;
   }
-  games = data || [];
+  matches = data || [];
   renderGrid();
 }
 
@@ -90,17 +90,17 @@ function renderGrid() {
     .map((date) => {
       if (!date) return `<div class="calendar-cell outside"></div>`;
       const key = dateKey(date);
-      const dayGames = games.filter((g) => dateKey(new Date(g.scheduled_at)) === key);
+      const dayMatches = matches.filter((m) => dateKey(new Date(m.scheduled_at)) === key);
       const isToday = key === todayKey;
-      const pills = dayGames
+      const pills = dayMatches
         .slice(0, 3)
-        .map((g) => {
-          const a = teamsById[g.team_a_id]?.short_name || teamsById[g.team_a_id]?.name || "TBD";
-          const b = teamsById[g.team_b_id]?.short_name || teamsById[g.team_b_id]?.name || "TBD";
-          return `<span class="calendar-game-pill ${g.status === "completed" ? "completed" : ""}" data-day="${key}">${esc(a)} v ${esc(b)}</span>`;
+        .map((m) => {
+          const a = teamsById[m.team_a_id]?.short_name || teamsById[m.team_a_id]?.name || "TBD";
+          const b = teamsById[m.team_b_id]?.short_name || teamsById[m.team_b_id]?.name || "TBD";
+          return `<span class="calendar-game-pill ${m.status === "completed" ? "completed" : ""}" data-day="${key}">${esc(a)} v ${esc(b)} (Bo${m.best_of})</span>`;
         })
         .join("");
-      const more = dayGames.length > 3 ? `<span class="text-muted" style="font-size:0.68rem">+${dayGames.length - 3} more</span>` : "";
+      const more = dayMatches.length > 3 ? `<span class="text-muted" style="font-size:0.68rem">+${dayMatches.length - 3} more</span>` : "";
       return `
         <div class="calendar-cell ${isToday ? "today" : ""}" data-day="${key}">
           <div class="cell-date">${date.getDate()}</div>
@@ -116,7 +116,7 @@ function renderGrid() {
 
 function showDayDetail(key) {
   selectedDateKey = key;
-  const dayGames = games.filter((g) => dateKey(new Date(g.scheduled_at)) === key);
+  const dayMatches = matches.filter((m) => dateKey(new Date(m.scheduled_at)) === key);
   const card = document.getElementById("day-detail-card");
   const title = document.getElementById("day-detail-title");
   const body = document.getElementById("day-detail-body");
@@ -125,25 +125,26 @@ function showDayDetail(key) {
   const [y, m, d] = key.split("-").map(Number);
   title.textContent = new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  if (dayGames.length === 0) {
-    body.innerHTML = `<p class="empty-state">No games scheduled this day.</p>`;
+  if (dayMatches.length === 0) {
+    body.innerHTML = `<p class="empty-state">No matches scheduled this day.</p>`;
     return;
   }
 
-  body.innerHTML = dayGames
-    .map((g) => {
-      const aTeam = teamsById[g.team_a_id];
-      const bTeam = teamsById[g.team_b_id];
+  body.innerHTML = dayMatches
+    .map((m) => {
+      const aTeam = teamsById[m.team_a_id];
+      const bTeam = teamsById[m.team_b_id];
       const a = aTeam ? `<a href="team.html?id=${aTeam.id}">${esc(aTeam.name)}</a>` : "TBD";
       const b = bTeam ? `<a href="team.html?id=${bTeam.id}">${esc(bTeam.name)}</a>` : "TBD";
-      const time = new Date(g.scheduled_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      const time = new Date(m.scheduled_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
       const cancelBtn =
-        isAdmin && g.status === "scheduled"
-          ? `<button class="btn btn-sm btn-danger" data-cancel="${g.id}">Cancel</button>`
+        isAdmin && m.status === "scheduled"
+          ? `<button class="btn btn-sm btn-danger" data-cancel="${m.id}">Cancel</button>`
           : "";
+      const viewLink = m.status !== "scheduled" ? ` <a href="match.html?id=${m.id}" style="font-size:0.82rem">View match</a>` : "";
       return `
         <div class="upcoming-game-row">
-          <span>${a} <span class="text-muted">vs</span> ${b} <span class="text-muted">- ${time}</span> ${statusBadge(g.status)}</span>
+          <span>${a} <span class="text-muted">vs</span> ${b} <span class="text-muted">- ${time} - Bo${m.best_of}</span> ${statusBadge(m)}${viewLink}</span>
           ${cancelBtn}
         </div>`;
     })
@@ -154,16 +155,17 @@ function showDayDetail(key) {
   });
 }
 
-function statusBadge(status) {
-  if (status === "completed") return `<span class="text-muted" style="font-size:0.75rem">(played)</span>`;
-  if (status === "cancelled") return `<span class="loss-badge" style="font-size:0.75rem">(cancelled)</span>`;
+function statusBadge(m) {
+  if (m.status === "completed") return `<span class="text-muted" style="font-size:0.75rem">(final ${m.team_a_wins}-${m.team_b_wins})</span>`;
+  if (m.status === "in_progress") return `<span class="win-badge" style="font-size:0.75rem">(in progress ${m.team_a_wins}-${m.team_b_wins})</span>`;
+  if (m.status === "cancelled") return `<span class="loss-badge" style="font-size:0.75rem">(cancelled)</span>`;
   return "";
 }
 
 async function cancelSchedule(id) {
-  const ok = window.confirm("Cancel this scheduled game? Any predictions already made for it will remain but the game will no longer be predictable or listed as upcoming.");
+  const ok = window.confirm("Cancel this scheduled match? Any predictions already made for it will remain but the match will no longer be predictable or listed as upcoming.");
   if (!ok) return;
-  const { error } = await supabase.from("scheduled_games").update({ status: "cancelled" }).eq("id", id);
+  const { error } = await supabase.from("matches").update({ status: "cancelled" }).eq("id", id);
   if (error) return alert("Error: " + error.message);
   await loadMonth();
   if (selectedDateKey) showDayDetail(selectedDateKey);
@@ -173,6 +175,7 @@ async function createSchedule() {
   const msg = document.getElementById("schedule-msg");
   const teamA = document.getElementById("s-team-a").value;
   const teamB = document.getElementById("s-team-b").value;
+  const bestOf = Number(document.getElementById("s-best-of").value);
   const date = document.getElementById("s-date").value;
   const time = document.getElementById("s-time").value || "18:00";
   const notes = document.getElementById("s-notes").value || null;
@@ -197,9 +200,10 @@ async function createSchedule() {
 
   msg.textContent = "Saving...";
   msg.className = "form-msg";
-  const { error } = await supabase.from("scheduled_games").insert({
+  const { error } = await supabase.from("matches").insert({
     team_a_id: teamA,
     team_b_id: teamB,
+    best_of: bestOf,
     scheduled_at: scheduledAt.toISOString(),
     notes,
   });
@@ -213,11 +217,12 @@ async function createSchedule() {
   msg.className = "form-msg success";
   document.getElementById("s-team-a").value = "";
   document.getElementById("s-team-b").value = "";
+  document.getElementById("s-best-of").value = "3";
   document.getElementById("s-date").value = "";
   document.getElementById("s-notes").value = "";
   document.getElementById("new-schedule-card").style.display = "none";
 
-  // Jump the calendar to the month the new game was scheduled in.
+  // Jump the calendar to the month the new match was scheduled in.
   viewDate = startOfMonth(scheduledAt);
   await loadMonth();
 }

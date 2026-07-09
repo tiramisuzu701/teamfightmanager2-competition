@@ -7,8 +7,8 @@ const NAME_KEY = "tfm2_predictor_name";
 const LOCK_MINUTES = 30;
 
 let teamsById = {};
-let games = [];
-let predictionsByGame = {}; // scheduled_game_id -> array of predictions
+let matches = [];
+let predictionsByMatch = {}; // match_id -> array of predictions
 
 function getName() {
   return (localStorage.getItem(NAME_KEY) || "").trim();
@@ -35,48 +35,48 @@ async function init() {
   // listener on the container (which is never replaced, only its contents)
   // always catches it via event bubbling.
   document.getElementById("games-list").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-game]");
-    if (btn) submitPrediction(btn.dataset.game, btn.dataset.team);
+    const btn = e.target.closest("button[data-match]");
+    if (btn) submitPrediction(btn.dataset.match, btn.dataset.team);
   });
 
   const { data: teams } = await supabase.from("teams").select("id, name, short_name");
   teamsById = Object.fromEntries((teams || []).map((t) => [t.id, t]));
 
-  await loadTodaysGames();
+  await loadTodaysMatches();
   await loadLeaderboard();
 }
 
-async function loadTodaysGames() {
+async function loadTodaysMatches() {
   const list = document.getElementById("games-list");
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), startOfDay.getDate() + 1);
 
   const { data, error } = await supabase
-    .from("scheduled_games")
+    .from("matches")
     .select("*")
     .gte("scheduled_at", startOfDay.toISOString())
     .lt("scheduled_at", endOfDay.toISOString())
     .order("scheduled_at", { ascending: true });
 
   if (error) {
-    list.innerHTML = `<p class="empty-state">Could not load today's games (${esc(error.message)}).</p>`;
+    list.innerHTML = `<p class="empty-state">Could not load today's matches (${esc(error.message)}).</p>`;
     return;
   }
-  games = data || [];
-  if (games.length === 0) {
-    list.innerHTML = `<p class="empty-state">No games scheduled today. Check the <a href="calendar.html">Calendar</a> for what's coming up.</p>`;
+  matches = data || [];
+  if (matches.length === 0) {
+    list.innerHTML = `<p class="empty-state">No matches scheduled today. Check the <a href="calendar.html">Calendar</a> for what's coming up.</p>`;
     return;
   }
 
   const { data: preds } = await supabase
     .from("predictions")
     .select("*")
-    .in("scheduled_game_id", games.map((g) => g.id));
-  predictionsByGame = {};
+    .in("match_id", matches.map((m) => m.id));
+  predictionsByMatch = {};
   (preds || []).forEach((p) => {
-    predictionsByGame[p.scheduled_game_id] = predictionsByGame[p.scheduled_game_id] || [];
-    predictionsByGame[p.scheduled_game_id].push(p);
+    predictionsByMatch[p.match_id] = predictionsByMatch[p.match_id] || [];
+    predictionsByMatch[p.match_id].push(p);
   });
 
   render();
@@ -84,42 +84,43 @@ async function loadTodaysGames() {
 
 function render() {
   const list = document.getElementById("games-list");
-  if (games.length === 0) return;
+  if (matches.length === 0) return;
   const myName = getName();
 
-  list.innerHTML = games
-    .map((g) => {
-      const a = teamsById[g.team_a_id];
-      const b = teamsById[g.team_b_id];
-      const preds = predictionsByGame[g.id] || [];
-      const aCount = preds.filter((p) => p.predicted_team_id === g.team_a_id).length;
-      const bCount = preds.filter((p) => p.predicted_team_id === g.team_b_id).length;
+  list.innerHTML = matches
+    .map((m) => {
+      const a = teamsById[m.team_a_id];
+      const b = teamsById[m.team_b_id];
+      const preds = predictionsByMatch[m.id] || [];
+      const aCount = preds.filter((p) => p.predicted_team_id === m.team_a_id).length;
+      const bCount = preds.filter((p) => p.predicted_team_id === m.team_b_id).length;
       const mine = myName ? preds.find((p) => p.predictor_name === myName) : null;
-      const lockTime = new Date(new Date(g.scheduled_at).getTime() - LOCK_MINUTES * 60000);
-      const isLocked = new Date() >= lockTime || g.status !== "scheduled";
-      const time = new Date(g.scheduled_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      const lockTime = new Date(new Date(m.scheduled_at).getTime() - LOCK_MINUTES * 60000);
+      const isLocked = new Date() >= lockTime || m.status !== "scheduled";
+      const time = new Date(m.scheduled_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
       let statusLine;
-      if (g.status === "cancelled") statusLine = `<span class="loss-badge">Cancelled</span>`;
-      else if (g.status === "completed") statusLine = `<span class="text-muted">Final</span>`;
+      if (m.status === "cancelled") statusLine = `<span class="loss-badge">Cancelled</span>`;
+      else if (m.status === "completed") statusLine = `<span class="text-muted">Final ${m.team_a_wins}-${m.team_b_wins}</span>`;
+      else if (m.status === "in_progress") statusLine = `<span class="text-muted">In progress ${m.team_a_wins}-${m.team_b_wins}</span>`;
       else if (isLocked) statusLine = `<span class="text-muted">Predictions locked</span>`;
       else statusLine = `<span class="win-badge">Open until ${lockTime.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>`;
 
       const disableForm = isLocked || !myName;
-      const aSelected = mine?.predicted_team_id === g.team_a_id;
-      const bSelected = mine?.predicted_team_id === g.team_b_id;
+      const aSelected = mine?.predicted_team_id === m.team_a_id;
+      const bSelected = mine?.predicted_team_id === m.team_b_id;
 
       return `
         <div class="card" style="background:var(--bg);margin-bottom:14px">
           <div class="stat-toggle-row" style="margin-bottom:10px">
-            <strong>${time}</strong>
+            <strong>${time} &middot; Bo${m.best_of}</strong>
             ${statusLine}
           </div>
           <div class="field-row">
-            <button class="btn ${aSelected ? "btn-primary" : ""}" data-game="${g.id}" data-team="${g.team_a_id}" ${disableForm ? "disabled" : ""}>
+            <button class="btn ${aSelected ? "btn-primary" : ""}" data-match="${m.id}" data-team="${m.team_a_id}" ${disableForm ? "disabled" : ""}>
               ${esc(a?.name || "TBD")} <span class="text-muted">(${aCount})</span>
             </button>
-            <button class="btn ${bSelected ? "btn-primary" : ""}" data-game="${g.id}" data-team="${g.team_b_id}" ${disableForm ? "disabled" : ""}>
+            <button class="btn ${bSelected ? "btn-primary" : ""}" data-match="${m.id}" data-team="${m.team_b_id}" ${disableForm ? "disabled" : ""}>
               ${esc(b?.name || "TBD")} <span class="text-muted">(${bCount})</span>
             </button>
           </div>
@@ -130,7 +131,7 @@ function render() {
     .join("");
 }
 
-async function submitPrediction(scheduledGameId, teamId) {
+async function submitPrediction(matchId, teamId) {
   const name = getName();
   if (!name) return;
 
@@ -138,19 +139,19 @@ async function submitPrediction(scheduledGameId, teamId) {
     .from("predictions")
     .upsert(
       {
-        scheduled_game_id: scheduledGameId,
+        match_id: matchId,
         predictor_name: name,
         predicted_team_id: teamId,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "scheduled_game_id,predictor_name" }
+      { onConflict: "match_id,predictor_name" }
     );
 
   if (error) {
     alert("Could not save your prediction: " + error.message + "\nIt may have just locked - refresh the page to check.");
     return;
   }
-  await loadTodaysGames();
+  await loadTodaysMatches();
 }
 
 async function loadLeaderboard() {
@@ -166,7 +167,7 @@ async function loadLeaderboard() {
     return;
   }
   if (!data || data.length === 0) {
-    body.innerHTML = `<tr><td colspan="5" class="empty-state">No completed predictions yet - check back once games have been played.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">No completed predictions yet - check back once matches have been played.</td></tr>`;
     return;
   }
   body.innerHTML = data

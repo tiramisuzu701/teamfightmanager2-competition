@@ -44,7 +44,7 @@ async function init() {
 async function loadUpcomingGames(teamsById) {
   const container = document.getElementById("upcoming-games");
   const { data, error } = await supabase
-    .from("scheduled_games")
+    .from("matches")
     .select("*")
     .eq("status", "scheduled")
     .gte("scheduled_at", new Date().toISOString())
@@ -52,23 +52,23 @@ async function loadUpcomingGames(teamsById) {
     .limit(5);
 
   if (error) {
-    container.innerHTML = `<p class="empty-state">Could not load upcoming games (${esc(error.message)}).</p>`;
+    container.innerHTML = `<p class="empty-state">Could not load upcoming matches (${esc(error.message)}).</p>`;
     return;
   }
   if (!data || data.length === 0) {
-    container.innerHTML = `<p class="empty-state">Nothing on the calendar yet. Log in as admin to schedule a game on the <a href="calendar.html">Calendar</a> tab.</p>`;
+    container.innerHTML = `<p class="empty-state">Nothing on the calendar yet. Log in as admin to schedule a match on the <a href="calendar.html">Calendar</a> tab.</p>`;
     return;
   }
   container.innerHTML = data
-    .map((g) => {
-      const a = teamsById[g.team_a_id];
-      const b = teamsById[g.team_b_id];
+    .map((m) => {
+      const a = teamsById[m.team_a_id];
+      const b = teamsById[m.team_b_id];
       const aLabel = a ? `<a href="team.html?id=${a.id}">${esc(a.name)}</a>` : "TBD";
       const bLabel = b ? `<a href="team.html?id=${b.id}">${esc(b.name)}</a>` : "TBD";
       return `
         <div class="upcoming-game-row">
-          <span>${aLabel} <span class="text-muted">vs</span> ${bLabel}</span>
-          <span class="upcoming-game-time">${formatDateTime(g.scheduled_at)}</span>
+          <span>${aLabel} <span class="text-muted">vs</span> ${bLabel} <span class="text-muted">(Bo${m.best_of})</span></span>
+          <span class="upcoming-game-time">${formatDateTime(m.scheduled_at)}</span>
         </div>`;
     })
     .join("");

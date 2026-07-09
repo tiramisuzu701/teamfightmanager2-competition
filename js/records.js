@@ -69,8 +69,12 @@ async function loadRecords() {
 
   const rows = (gps || []).map((row) => ({ ...row, kda: (row.kills + row.assists) / Math.max(1, row.deaths) }));
 
+  let matchesQuery = supabase.from("matches").select("*").eq("status", "completed").order("completed_at", { ascending: true });
+  if (selectedSeasonId) matchesQuery = matchesQuery.eq("season_id", selectedSeasonId);
+  const { data: matches } = await matchesQuery;
+
   const statCards = STAT_RECORDS.map((stat) => renderStatRecord(stat, rows, gamesById, playersById, teamsById)).join("");
-  const streakCard = renderWinStreak(games, teamsById);
+  const streakCard = renderWinStreak(matches || [], teamsById);
 
   grid.innerHTML = statCards + streakCard;
 }
@@ -106,24 +110,24 @@ function renderStatRecord(stat, rows, gamesById, playersById, teamsById) {
   );
 }
 
-function renderWinStreak(games, teamsById) {
+function renderWinStreak(matches, teamsById) {
   const byTeam = {};
-  games.forEach((g) => {
-    if (!g.winner_id) return;
-    [g.team_a_id, g.team_b_id].forEach((teamId) => {
+  matches.forEach((m) => {
+    if (!m.winner_id) return;
+    [m.team_a_id, m.team_b_id].forEach((teamId) => {
       if (!teamId) return;
       byTeam[teamId] = byTeam[teamId] || [];
-      byTeam[teamId].push(g);
+      byTeam[teamId].push(m);
     });
   });
 
   let best = { teamId: null, streak: 0 };
-  Object.entries(byTeam).forEach(([teamId, teamGames]) => {
-    const sorted = [...teamGames].sort((a, b) => new Date(a.played_at) - new Date(b.played_at));
+  Object.entries(byTeam).forEach(([teamId, teamMatches]) => {
+    const sorted = [...teamMatches].sort((a, b) => new Date(a.completed_at) - new Date(b.completed_at));
     let current = 0;
     let longest = 0;
-    sorted.forEach((g) => {
-      if (g.winner_id === teamId) {
+    sorted.forEach((m) => {
+      if (m.winner_id === teamId) {
         current++;
         longest = Math.max(longest, current);
       } else {
@@ -134,7 +138,7 @@ function renderWinStreak(games, teamsById) {
   });
 
   if (!best.teamId || best.streak === 0) {
-    return recordCard("Longest Win Streak", `<p class="empty-state">No completed games yet.</p>`);
+    return recordCard("Longest Win Streak", `<p class="empty-state">No completed matches yet.</p>`);
   }
   const team = teamsById[best.teamId];
   return recordCard(
@@ -142,7 +146,7 @@ function renderWinStreak(games, teamsById) {
     `
     <div class="record-value">${best.streak}</div>
     <div class="record-holder">${team ? `<a href="team.html?id=${team.id}">${esc(team.name)}</a>` : "Unknown team"}</div>
-    <div class="text-muted" style="font-size:0.78rem">consecutive wins</div>`
+    <div class="text-muted" style="font-size:0.78rem">consecutive match wins</div>`
   );
 }
 

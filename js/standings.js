@@ -29,7 +29,7 @@ async function init() {
 async function load() {
   const body = document.getElementById("standings-body");
   if (!selectedSeasonId) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">No season found yet.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-state">No season found yet.</td></tr>`;
     return;
   }
 
@@ -39,11 +39,11 @@ async function load() {
     .eq("season_id", selectedSeasonId);
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">Could not load standings (${error.message}). Check js/config.js is set up - see SETUP.md.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-state">Could not load standings (${error.message}). Check js/config.js is set up - see SETUP.md.</td></tr>`;
     return;
   }
   if (!data || data.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">No teams yet. Log in as admin, add teams on the <a href="manage.html">Manage</a> tab, then log some games.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-state">No teams yet. Log in as admin, add teams on the <a href="manage.html">Manage</a> tab, then log some matches.</td></tr>`;
     return;
   }
 
@@ -71,7 +71,8 @@ function render() {
           <td class="team-name">${t.logo_url ? `<img src="${escapeHtml(t.logo_url)}" alt="" class="thumb-logo" />` : ""}<a href="team.html?id=${t.team_id}">${escapeHtml(t.name)}</a>${t.short_name ? ` <span class="text-muted">(${escapeHtml(t.short_name)})</span>` : ""}</td>
           <td class="text-right num win-badge">${t.wins ?? 0}</td>
           <td class="text-right num loss-badge">${t.losses ?? 0}</td>
-          <td class="text-right num">${t.games_played ?? 0}</td>
+          <td class="text-right num">${t.matches_played ?? 0}</td>
+          <td class="text-right num">${formatDiff(t.game_diff)}</td>
           <td class="text-right num">${t.win_pct != null ? t.win_pct + "%" : "-"}</td>
         </tr>`;
     })
@@ -95,6 +96,12 @@ document.querySelectorAll("#standings-table thead th").forEach((th) => {
     render();
   });
 });
+
+function formatDiff(n) {
+  const v = n ?? 0;
+  if (v > 0) return `+${v}`;
+  return `${v}`;
+}
 
 function escapeHtml(str) {
   const div = document.createElement("div");

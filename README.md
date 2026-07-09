@@ -9,46 +9,89 @@ two quick account-security clicks and a push to GitHub Pages remain.
 
 ## What's included
 
+League play is organized around **matches** - a best-of-3, best-of-5, or
+best-of-7 set between two teams. A match is what counts toward standings (1
+win/1 loss per match, however many games it took); the individual games
+inside it keep their own full player stats and are viewable on the match's
+own page. See "How matches work" below for details.
+
 - **Home** (`index.html`) - welcome page with Player of the Week, a
-  snapshot of upcoming games, recent news/trades, top standings, and top
+  snapshot of upcoming matches, recent news/trades, top standings, and top
   players at a glance.
-- **Standings** (`standings.html`) - team win/loss records, sortable, with a
-  season picker to browse any past season.
+- **Standings** (`standings.html`) - team win/loss records (by match), a
+  Matches Played and Game Difference column, sortable, with a season picker
+  to browse any past season.
 - **Players** (`players.html`) - full season stat table for every player,
   plus a Top-10 leaderboard mode for any stat (kills, KDA, CS, gold,
   damage, towers, objectives, wins...), also season-aware.
-- **Calendar** (`calendar.html`) - month-by-month view of scheduled games;
-  admins can schedule new games and cancel existing ones.
+- **Calendar** (`calendar.html`) - month-by-month view of scheduled matches
+  (each with its best-of format); admins can schedule new matches and
+  cancel existing ones.
 - **Predictions** (`predictions.html`) - anyone can type a display name (no
-  account needed) and pick winners for the day's games, locking 30 minutes
-  before each game starts, with a running accuracy leaderboard.
+  account needed) and pick winners for the day's matches, locking 30
+  minutes before each match starts, with a running accuracy leaderboard.
 - **Brackets** (`brackets.html`) - create and run double-elimination or
   round-robin/group tournaments, optionally auto-seeded from the current
   standings; admins report results and the bracket advances itself
-  (including bye handling for uneven team counts).
+  (including bye handling for uneven team counts). Tournament matches are
+  still scored directly (a single reported final score) rather than
+  through the regular-season match/game log.
 - **Records** (`records.html`) - single-game bests (kills, assists, damage,
-  CS, gold, towers, objectives, KDA) and the longest team win streak,
-  all-time or filtered to any season.
+  CS, gold, towers, objectives, KDA) and the longest team win streak (now
+  counted in consecutive match wins), all-time or filtered to any season.
 - **News** (`news.html`) - reverse-chronological feed of trades/roster moves
   and free-form announcements; admins can post both (a trade automatically
   updates the player's team assignment), optionally auto-posted to Discord.
 - **Rules** (`rules.html`) - a public rules/handbook page admins can edit
   in place, no code changes needed.
-- **Team pages** (`team.html?id=...`) - roster, season record, recent
-  games, and all-time head-to-head vs every other team; reached by
-  clicking any team name across the site.
+- **Team pages** (`team.html?id=...`) - roster, season record (wins,
+  losses, matches played, game difference), recent matches, and all-time
+  head-to-head vs every other team; reached by clicking any team name
+  across the site.
 - **Player pages** (`player.html?id=...`) - season stats, a KDA trend
-  chart, and full game log; reached by clicking any player name.
-- **Log Game** (`log-game.html`) - admin-only form to record a completed
-  game's winner and each player's stats in one go, optionally linked to a
-  scheduled game (which then gets marked completed automatically).
+  chart, and full per-game log; reached by clicking any player name.
+- **Match pages** (`match.html?id=...`) - a single match's series score,
+  best-of format, and status, with every individual game's full box score
+  underneath; reached by clicking any match from Standings, Team pages, the
+  Calendar, or right after logging one.
+- **Log Game** (`log-game.html`) - admin-only flow to log a match: start a
+  new best-of-3/5/7 set (or continue a scheduled one), then log each game
+  one at a time as it's played. The match completes itself automatically
+  once a team wins the majority, or an admin can end it early (e.g. a
+  forfeit) and pick the winner directly.
 - **Manage** (`manage.html`) - admin-only screen to add/remove teams and
   players, upload team logos/player photos, start a new season (resets
-  Standings/Players to zero while keeping every past game and season
+  Standings/Players to zero while keeping every past match/game and season
   browsable), and set an optional Discord webhook for auto-announcements.
 - **Login** (`login.html`) - single admin login (no public sign-up).
 - **Light/dark theme toggle** - in the nav bar on every page, persisted per
   visitor's browser.
+
+## How matches work
+
+- A **match** is a best-of-3, best-of-5, or best-of-7 set between two teams
+  - you pick the format when you schedule or start it.
+- Standings count **matches**, not individual games: winning a set 2-0 or
+  2-1 is still just 1 win. The **Game Difference** column on Standings and
+  Team pages separately tracks individual games won minus lost, so a team
+  that always needs the full 3 games to close out a set is distinguishable
+  from one that's sweeping opponents.
+- Logging a match happens one game at a time from the Log Game tab - enter
+  each game's winner and player stats as it's played. The match completes
+  itself automatically the moment a team reaches the majority (2 of 3, 3 of
+  5, or 4 of 7); you don't need to log games that were never played once a
+  set is decided.
+- If a match needs to end before it's decided (a forfeit, a no-show, or any
+  other early stop), an admin can end it directly from the Log Game tab and
+  pick the winner - the match is marked completed with whatever games were
+  actually logged.
+- Every individual game's full box score (per-player kills/deaths/assists/
+  etc.) is still kept and viewable on the match's own page, alongside the
+  series score - nothing about per-game stats changes, only how wins/losses
+  roll up to standings.
+- Tournament brackets (`brackets.html`) are a separate, existing system -
+  a bracket match's score is still reported directly by an admin rather
+  than being built from a logged best-of-N set.
 
 ## How it's built
 
@@ -62,17 +105,18 @@ readable while restricting all writes to a signed-in admin account.
 
 ```
 index.html          Home page (welcome + Player of the Week + snapshot)
-standings.html       Standings page (season-aware)
+standings.html       Standings page (season-aware, match-based W/L + Game Diff)
 players.html         Player stats + leaderboards (season-aware)
-calendar.html        Month-by-month schedule
-predictions.html     Name-tag game predictions + leaderboard
+calendar.html        Month-by-month schedule of matches
+predictions.html     Name-tag match predictions + leaderboard
 brackets.html        Tournament brackets (+ seed-from-standings)
 records.html         League records / awards
 news.html            Trades / roster moves / announcements feed
 rules.html           Public rules/handbook (admin-editable)
-team.html            Team profile (roster, record, head-to-head)
-player.html          Player profile (stats, trend, game log)
-log-game.html        Admin: log a completed game
+team.html            Team profile (roster, record, recent matches, head-to-head)
+player.html          Player profile (stats, trend, per-game log)
+match.html           Match detail: series score + every game's box score
+log-game.html        Admin: log a match, one game at a time
 manage.html          Admin: teams/players, logos/photos, seasons, Discord
 login.html           Admin login
 css/style.css        Shared styling (incl. light/dark theme variables)
@@ -80,7 +124,7 @@ js/                  Application code
   config.js                     <- put your Supabase URL/key here
   supabaseClient.js, auth.js, nav.js, seasons.js, settings.js, discord.js   Shared plumbing
   home.js, standings.js, players.js, calendar.js, predictions.js,
-  news.js, rules.js, team.js, player.js, records.js,
+  news.js, rules.js, team.js, player.js, match.js, records.js,
   brackets.js, logGame.js, manage.js, loginPage.js
   bracketGen.js                Double-elimination / round-robin generation
 sql/schema.sql              Database tables, views, storage buckets, and security policies

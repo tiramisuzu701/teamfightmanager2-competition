@@ -83,40 +83,45 @@ async function loadRecordAndGames() {
 
   recordEl.innerHTML = standing
     ? `
-      <div class="field-row" style="text-align:center">
+      <div class="field-row" style="text-align:center;flex-wrap:wrap">
         <div><div class="page-title" style="margin:0">${standing.wins ?? 0}</div><div class="text-muted" style="font-size:0.78rem">Wins</div></div>
         <div><div class="page-title" style="margin:0">${standing.losses ?? 0}</div><div class="text-muted" style="font-size:0.78rem">Losses</div></div>
+        <div><div class="page-title" style="margin:0">${standing.matches_played ?? 0}</div><div class="text-muted" style="font-size:0.78rem">Matches</div></div>
+        <div><div class="page-title" style="margin:0">${formatDiff(standing.game_diff)}</div><div class="text-muted" style="font-size:0.78rem">Game Diff</div></div>
         <div><div class="page-title" style="margin:0">${standing.win_pct != null ? standing.win_pct + "%" : "-"}</div><div class="text-muted" style="font-size:0.78rem">Win %</div></div>
       </div>`
     : `<p class="empty-state">No record for this season.</p>`;
 
-  const { data: games, error: gErr } = await supabase
-    .from("games")
+  const { data: matches, error: mErr } = await supabase
+    .from("matches")
     .select("*")
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .eq("season_id", selectedSeasonId)
-    .order("played_at", { ascending: false })
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
     .limit(10);
 
-  if (gErr) {
-    gamesEl.innerHTML = `<p class="empty-state">Could not load games.</p>`;
+  if (mErr) {
+    gamesEl.innerHTML = `<p class="empty-state">Could not load matches.</p>`;
     return;
   }
-  if (!games || games.length === 0) {
-    gamesEl.innerHTML = `<p class="empty-state">No games logged this season yet.</p>`;
+  if (!matches || matches.length === 0) {
+    gamesEl.innerHTML = `<p class="empty-state">No matches played this season yet.</p>`;
     return;
   }
 
-  const oppById = await fetchOpponents(games);
-  gamesEl.innerHTML = games
-    .map((g) => {
-      const opponentId = g.team_a_id === teamId ? g.team_b_id : g.team_a_id;
+  const oppById = await fetchOpponents(matches);
+  gamesEl.innerHTML = matches
+    .map((m) => {
+      const opponentId = m.team_a_id === teamId ? m.team_b_id : m.team_a_id;
       const opponent = oppById[opponentId];
-      const won = g.winner_id === teamId;
+      const won = m.winner_id === teamId;
+      const myScore = m.team_a_id === teamId ? m.team_a_wins : m.team_b_wins;
+      const oppScore = m.team_a_id === teamId ? m.team_b_wins : m.team_a_wins;
       return `
       <div class="upcoming-game-row">
-        <span>${won ? `<span class="win-badge">W</span>` : `<span class="loss-badge">L</span>`} vs ${opponent ? `<a href="team.html?id=${opponent.id}">${esc(opponent.name)}</a>` : "Unknown"}</span>
-        <span class="upcoming-game-time">${formatDate(g.played_at)}</span>
+        <span>${won ? `<span class="win-badge">W</span>` : `<span class="loss-badge">L</span>`} vs ${opponent ? `<a href="team.html?id=${opponent.id}">${esc(opponent.name)}</a>` : "Unknown"} <a href="match.html?id=${m.id}" class="text-muted" style="font-size:0.78rem">(${myScore}-${oppScore})</a></span>
+        <span class="upcoming-game-time">${formatDate(m.completed_at)}</span>
       </div>`;
     })
     .join("");
@@ -124,24 +129,28 @@ async function loadRecordAndGames() {
 
 async function loadHeadToHead() {
   const body = document.getElementById("head-to-head-body");
-  const { data: games, error } = await supabase.from("games").select("*").or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`);
+  const { data: matches, error } = await supabase
+    .from("matches")
+    .select("*")
+    .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+    .eq("status", "completed");
   if (error) {
-    body.innerHTML = `<tr><td colspan="4" class="empty-state">Could not load games.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">Could not load matches.</td></tr>`;
     return;
   }
-  if (!games || games.length === 0) {
-    body.innerHTML = `<tr><td colspan="4" class="empty-state">No games logged yet.</td></tr>`;
+  if (!matches || matches.length === 0) {
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">No matches played yet.</td></tr>`;
     return;
   }
 
-  const oppById = await fetchOpponents(games);
+  const oppById = await fetchOpponents(matches);
   const table = {};
-  games.forEach((g) => {
-    if (!g.winner_id) return;
-    const opponentId = g.team_a_id === teamId ? g.team_b_id : g.team_a_id;
+  matches.forEach((m) => {
+    if (!m.winner_id) return;
+    const opponentId = m.team_a_id === teamId ? m.team_b_id : m.team_a_id;
     if (!opponentId) return;
     table[opponentId] = table[opponentId] || { wins: 0, losses: 0 };
-    if (g.winner_id === teamId) table[opponentId].wins++;
+    if (m.winner_id === teamId) table[opponentId].wins++;
     else table[opponentId].losses++;
   });
 
@@ -172,6 +181,12 @@ async function fetchOpponents(games) {
   if (ids.length === 0) return {};
   const { data } = await supabase.from("teams").select("id, name").in("id", ids);
   return Object.fromEntries((data || []).map((t) => [t.id, t]));
+}
+
+function formatDiff(n) {
+  const v = n ?? 0;
+  if (v > 0) return `+${v}`;
+  return `${v}`;
 }
 
 function initials(str) {

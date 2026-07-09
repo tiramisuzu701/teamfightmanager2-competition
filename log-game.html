@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Log Game - Teamfight Manager 2 League</title>
+<title>Log a Match - Teamfight Manager 2 League</title>
 <link rel="icon" href="data:," />
 <script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
 <link rel="stylesheet" href="css/style.css" />
@@ -12,53 +12,78 @@
   <div id="nav-root"></div>
 
   <main>
-    <h1 class="page-title">Log a Game</h1>
-    <p class="page-subtitle">Record a completed game's result and per-player stats. Admin only.</p>
+    <h1 class="page-title">Log a Match</h1>
+    <p class="page-subtitle">Matches are played in sets of 3, 5, or 7. Log each game as it happens - the match completes automatically once a team wins the majority, or you can end it early. Admin only.</p>
 
-    <div class="card">
-      <h2 class="card-title">1. Matchup</h2>
+    <div class="card" id="match-picker-card">
+      <h2 class="card-title">1. Match</h2>
+      <div class="field">
+        <label for="existing-match">Continue a scheduled / in-progress match</label>
+        <select id="existing-match"><option value="">None - start a new match below</option></select>
+      </div>
+      <p class="text-muted" style="font-size:0.85rem;margin:10px 0">- or start a new one -</p>
       <div class="field-row">
         <div class="field">
-          <label for="team-a">Team A</label>
-          <select id="team-a"><option value="">Select team...</option></select>
+          <label for="new-team-a">Team A</label>
+          <select id="new-team-a"><option value="">Select team...</option></select>
         </div>
         <div class="field">
-          <label for="team-b">Team B</label>
-          <select id="team-b"><option value="">Select team...</option></select>
+          <label for="new-team-b">Team B</label>
+          <select id="new-team-b"><option value="">Select team...</option></select>
         </div>
+        <div class="field">
+          <label for="new-best-of">Best of</label>
+          <select id="new-best-of">
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+            <option value="7">7</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="new-bracket-match">Link to tournament match (optional)</label>
+        <select id="new-bracket-match"><option value="">None - regular season / friendly</option></select>
+      </div>
+      <div class="field">
+        <label for="new-notes">Notes (optional)</label>
+        <input type="text" id="new-notes" placeholder="e.g. Week 3" />
+      </div>
+      <button type="button" class="btn btn-primary" id="start-match-btn">Start New Match</button>
+      <div id="match-picker-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card" id="match-progress-card" style="display:none">
+      <h2 class="card-title" id="match-progress-title">Match</h2>
+      <div id="match-progress-summary"></div>
+      <div id="match-games-log"></div>
+      <div class="field-row" style="margin-top:14px">
+        <button type="button" class="btn btn-ghost btn-sm" id="end-early-btn">End Match Now (Early Stop)</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-danger" id="cancel-match-btn">Cancel Match</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="switch-match-btn">Switch Match</button>
+      </div>
+    </div>
+
+    <div class="card" id="game-form-card" style="display:none">
+      <h2 class="card-title" id="game-form-title">2. Log Game 1</h2>
+      <div class="field-row">
         <div class="field">
           <label for="duration">Duration (minutes)</label>
           <input type="number" id="duration" min="0" step="0.1" placeholder="e.g. 32" />
         </div>
       </div>
       <div class="field">
-        <label for="scheduled-game">Link to scheduled game (optional)</label>
-        <select id="scheduled-game"><option value="">None - pick teams manually below</option></select>
-      </div>
-      <div class="field">
-        <label for="bracket-match">Link to tournament match (optional)</label>
-        <select id="bracket-match"><option value="">None - regular season / friendly</option></select>
-      </div>
-      <div class="field">
-        <label>Winner</label>
+        <label>Winner (this game)</label>
         <div class="field-row" id="winner-picker">
-          <button type="button" class="btn" data-side="a" disabled>Select Team A first</button>
-          <button type="button" class="btn" data-side="b" disabled>Select Team B first</button>
+          <button type="button" class="btn" data-side="a" disabled>Team A</button>
+          <button type="button" class="btn" data-side="b" disabled>Team B</button>
         </div>
       </div>
       <div class="field">
         <label for="notes">Notes (optional)</label>
-        <textarea id="notes" rows="2" placeholder="e.g. Week 3, Game 2 of series"></textarea>
+        <textarea id="notes" rows="2" placeholder="e.g. close game, comeback"></textarea>
       </div>
-    </div>
-
-    <div class="card" id="rosters-card" style="display:none">
-      <h2 class="card-title">2. Player Stats</h2>
-      <p class="text-muted" style="font-size:0.85rem;margin-top:-10px">Check "Played" for each player who took part, then fill in their stats.</p>
+      <p class="text-muted" style="font-size:0.85rem;margin-top:-6px">Check "Played" for each player who took part, then fill in their stats.</p>
       <div id="rosters-container"></div>
-    </div>
-
-    <div class="card">
       <button type="button" class="btn btn-primary" id="submit-btn" disabled>Save Game</button>
       <div id="submit-msg" class="form-msg"></div>
     </div>
