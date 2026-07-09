@@ -1,6 +1,6 @@
 import { getSession, onAuthChange, signOut } from "./auth.js";
 import { LEAGUE_NAME } from "./config.js";
-import { isConfigured } from "./supabaseClient.js";
+import { supabase, isConfigured } from "./supabaseClient.js";
 
 const TABS = [
   { href: "index.html", label: "Home" },
@@ -73,6 +73,10 @@ export async function renderNav(activeHref) {
           <span class="brand-name">${LEAGUE_NAME}</span>
         </a>
         <nav class="site-nav">${tabsHtml}</nav>
+        <div class="nav-search" id="nav-search">
+          <input type="search" id="global-search-input" class="search-input" placeholder="Search..." autocomplete="off" aria-label="Search teams, players, champions" />
+          <div class="search-results" id="global-search-results"></div>
+        </div>
         <div class="auth-area" id="auth-area"></div>
         <button class="btn btn-ghost btn-sm theme-toggle" id="theme-toggle-btn" aria-label="Toggle light/dark theme"></button>
         <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">&#9776;</button>
@@ -119,4 +123,135 @@ export async function renderNav(activeHref) {
     authListenerRegistered = true;
     onAuthChange(() => renderNav(page));
   }
+
+  setupSearch();
+}
+
+// --- Global search --------------------------------------------------------
+// Lazily fetches a small in-memory index of teams/players/champions (once
+// per page load, shared across renderNav() re-renders triggered by auth
+// changes) and filters it client-side as the visitor types. The league's
+// data is small (tens of teams/players/champions), so a full client-side
+// scan is simpler and fast enough compared to hitting Supabase per
+// keystroke.
+let searchIndexPromise = null;
+
+function loadSearchIndex() {
+  if (!searchIndexPromise) {
+    searchIndexPromise = Promise.all([
+      supabase.from("teams").select("id, name, short_name"),
+      supabase.from("players").select("id, name, team_id"),
+      supabase.from("champions").select("id, name, icon_url"),
+    ]).then(([teamsRes, playersRes, champsRes]) => ({
+      teams: teamsRes.data || [],
+      players: playersRes.data || [],
+      champions: champsRes.data || [],
+    }));
+  }
+  return searchIndexPromise;
+}
+
+function setupSearch() {
+  const input = document.getElementById("global-search-input");
+  const results = document.getElementById("global-search-results");
+  const wrap = document.getElementById("nav-search");
+  if (!input || !results || !wrap) return;
+
+  let debounceTimer = null;
+  let activeIndex = -1;
+  let currentItems = []; // flat list of { href, label } currently rendered, for keyboard nav
+
+  function closeResults() {
+    results.classList.remove("open");
+    activeIndex = -1;
+  }
+
+  function runSearch(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      results.innerHTML = "";
+      closeResults();
+      return;
+    }
+    loadSearchIndex().then((index) => {
+      const teamMatches = index.teams.filter((t) => t.name.toLowerCase().includes(q) || (t.short_name || "").toLowerCase().includes(q)).slice(0, 6);
+      const playerMatches = index.players.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 6);
+      const champMatches = index.champions.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 6);
+
+      currentItems = [
+        ...teamMatches.map((t) => ({ href: `team.html?id=${t.id}`, label: t.name, group: "Teams" })),
+        ...playerMatches.map((p) => ({ href: `player.html?id=${p.id}`, label: p.name, group: "Players" })),
+        ...champMatches.map((c) => ({ href: `champions.html?highlight=${c.id}`, label: c.name, group: "Champions", icon: c.icon_url })),
+      ];
+      activeIndex = -1;
+
+      if (currentItems.length === 0) {
+        results.innerHTML = `<div class="search-empty-msg">No matches for "${escapeHtml(query)}".</div>`;
+        results.classList.add("open");
+        return;
+      }
+
+      const groupsHtml = ["Teams", "Players", "Champions"]
+        .map((group) => {
+          const items = currentItems.filter((it) => it.group === group);
+          if (items.length === 0) return "";
+          const rows = items
+            .map((it, i) => {
+              const globalIndex = currentItems.indexOf(it);
+              const icon = it.icon ? `<img src="${escapeHtml(it.icon)}" alt="" class="thumb-logo" style="width:20px;height:20px;margin:0" />` : "";
+              return `<a href="${it.href}" class="search-result-item" data-index="${globalIndex}">${icon}<span>${escapeHtml(it.label)}</span></a>`;
+            })
+            .join("");
+          return `<div class="search-group-label">${group}</div>${rows}`;
+        })
+        .join("");
+
+      results.innerHTML = groupsHtml;
+      results.classList.add("open");
+    });
+  }
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    const value = input.value;
+    debounceTimer = setTimeout(() => runSearch(value), 150);
+  });
+
+  input.addEventListener("focus", () => {
+    if (input.value.trim()) runSearch(input.value);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    const items = results.querySelectorAll(".search-result-item");
+    if (items.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+      items[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+      items[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && items[activeIndex]) {
+        e.preventDefault();
+        location.href = items[activeIndex].getAttribute("href");
+      }
+    } else if (e.key === "Escape") {
+      closeResults();
+      input.blur();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) closeResults();
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
 }

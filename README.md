@@ -50,8 +50,10 @@ own page. See "How matches work" below for details.
   losses, matches played, game difference), recent matches, and all-time
   head-to-head vs every other team; reached by clicking any team name
   across the site.
-- **Player pages** (`player.html?id=...`) - season stats, a KDA trend
-  chart, and full per-game log; reached by clicking any player name.
+- **Player pages** (`player.html?id=...`) - season stats, a champion pool
+  (which champions they've picked, games/wins/win rate for each, season-
+  aware), a KDA trend chart, and full per-game log; reached by clicking any
+  player name.
 - **Match pages** (`match.html?id=...`) - a single match's series score,
   best-of format, and status, with every individual game's full box score
   underneath (including each player's champion pick and each team's bans
@@ -76,6 +78,9 @@ own page. See "How matches work" below for details.
   keeping every past match/game and season browsable), and set an optional
   Discord webhook for auto-announcements.
 - **Login** (`login.html`) - single admin login (no public sign-up).
+- **Search** - a search box in the nav bar on every page; type a few
+  letters of any team, player, or champion name to jump straight to it
+  (champion results land on the Champions page with that row highlighted).
 - **Light/dark theme toggle** - in the nav bar on every page, persisted per
   visitor's browser.
 

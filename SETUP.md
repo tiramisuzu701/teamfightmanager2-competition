@@ -137,7 +137,12 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 - **Team and player pages**: click any team or player name anywhere on the
   site to open their profile - roster, match record (wins, losses, matches
   played, game difference), recent matches, and head-to-head for teams;
-  season stats, a KDA trend chart, and full per-game log for players.
+  season stats, a champion pool (games/wins/win rate per champion they've
+  picked), a KDA trend chart, and full per-game log for players.
+- **Search**: the search box in the nav bar (every page) finds teams,
+  players, and champions by name as you type - click a result (or arrow
+  down to it and hit Enter) to jump straight to that team/player page, or
+  to the Champions page with that champion's row highlighted.
 - **Theme toggle**: the sun/moon button in the nav switches between dark
   and light mode; it's remembered per visitor's browser.
 - **Starting a new season** (Manage tab): give it a name (e.g. "Season 2")

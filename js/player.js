@@ -6,6 +6,8 @@ renderNav("player.html");
 
 const playerId = new URLSearchParams(location.search).get("id");
 let selectedSeasonId = null;
+let champsById = {};
+let playerGames = []; // all-time game_player_stats rows merged with their game (incl. season_id), populated once by loadGameLogAndTrend
 
 async function init() {
   if (!playerId) {
@@ -52,9 +54,14 @@ async function init() {
   seasonSelect.addEventListener("change", () => {
     selectedSeasonId = seasonSelect.value;
     loadSeasonStats();
+    renderChampionPool();
   });
 
+  const { data: championData } = await supabase.from("champions").select("id, name, icon_url");
+  champsById = Object.fromEntries((championData || []).map((c) => [c.id, c]));
+
   await Promise.all([loadSeasonStats(), loadGameLogAndTrend()]);
+  renderChampionPool();
 }
 
 async function loadSeasonStats() {
@@ -127,6 +134,7 @@ async function loadGameLogAndTrend() {
     .map((g) => ({ ...g, game: gamesById[g.game_id] }))
     .filter((g) => g.game)
     .sort((a, b) => new Date(b.game.played_at) - new Date(a.game.played_at));
+  playerGames = merged;
 
   body.innerHTML = merged
     .slice(0, 20)
@@ -151,6 +159,46 @@ async function loadGameLogAndTrend() {
   const chronological = [...merged].reverse();
   const kdaValues = chronological.map((g) => (g.kills + g.assists) / Math.max(1, g.deaths));
   sparkline.innerHTML = renderSparkline(kdaValues);
+}
+
+function renderChampionPool() {
+  const body = document.getElementById("player-champions-body");
+  if (!selectedSeasonId) {
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">No season found.</td></tr>`;
+    return;
+  }
+
+  const seasonGames = playerGames.filter((g) => g.game.season_id === selectedSeasonId && g.champion_id);
+  if (seasonGames.length === 0) {
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">No champion picks logged this season yet.</td></tr>`;
+    return;
+  }
+
+  const byChampion = {};
+  seasonGames.forEach((g) => {
+    const bucket = (byChampion[g.champion_id] = byChampion[g.champion_id] || { games: 0, wins: 0 });
+    bucket.games += 1;
+    if (g.win) bucket.wins += 1;
+  });
+
+  const rows = Object.entries(byChampion)
+    .map(([championId, s]) => ({ championId, ...s, winPct: Math.round((s.wins / s.games) * 100) }))
+    .sort((a, b) => b.games - a.games);
+
+  body.innerHTML = rows
+    .map((r) => {
+      const champ = champsById[r.championId];
+      const icon = champ?.icon_url ? `<img src="${esc(champ.icon_url)}" alt="" class="thumb-logo" />` : "";
+      const name = champ ? esc(champ.name) : "Unknown";
+      return `
+      <tr>
+        <td class="team-name">${icon}${name}</td>
+        <td class="text-right num">${r.games}</td>
+        <td class="text-right num win-badge">${r.wins}</td>
+        <td class="text-right num">${r.winPct}%</td>
+      </tr>`;
+    })
+    .join("");
 }
 
 function renderSparkline(values) {

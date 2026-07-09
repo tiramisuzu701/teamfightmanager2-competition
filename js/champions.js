@@ -8,6 +8,7 @@ let rows = [];
 let sortKey = "pick_rate";
 let sortDir = "desc";
 let selectedSeasonId = null;
+let highlightId = new URLSearchParams(location.search).get("highlight");
 
 async function init() {
   const seasonSelect = document.getElementById("season-select");
@@ -65,7 +66,7 @@ function render() {
   body.innerHTML = sorted
     .map(
       (c) => `
-        <tr>
+        <tr data-champion-id="${c.champion_id}">
           <td class="team-name">${c.icon_url ? `<img src="${escapeHtml(c.icon_url)}" alt="" class="thumb-logo" />` : ""}${escapeHtml(c.name)}</td>
           <td class="text-right num">${c.times_picked ?? 0}</td>
           <td class="text-right num">${c.pick_rate != null ? c.pick_rate + "%" : "-"}</td>
@@ -80,6 +81,16 @@ function render() {
   document.querySelectorAll("#champions-table thead th").forEach((th) => {
     th.classList.toggle("sorted", th.dataset.key === sortKey);
   });
+
+  if (highlightId) {
+    const row = body.querySelector(`tr[data-champion-id="${highlightId}"]`);
+    if (row) {
+      row.classList.add("row-highlight");
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      setTimeout(() => row.classList.remove("row-highlight"), 3000);
+    }
+    highlightId = null; // only auto-highlight/scroll once, not on every re-sort
+  }
 }
 
 document.querySelectorAll("#champions-table thead th").forEach((th) => {
