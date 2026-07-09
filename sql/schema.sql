@@ -153,6 +153,19 @@ create index if not exists idx_games_match on games(match_id);
 create unique index if not exists idx_games_match_game_number on games(match_id, game_number) where match_id is not null;
 
 -- ----------------------------------------------------------------------------
+-- CHAMPIONS: a simple roster of pickable champions, managed via the Manage
+-- tab (name + optional icon). Picks are tracked per player per game (on
+-- game_player_stats below); bans are tracked per team per game (game_bans,
+-- no fixed count enforced - add as many as actually happened).
+-- ----------------------------------------------------------------------------
+create table if not exists champions (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  icon_url text,
+  created_at timestamptz not null default now()
+);
+
+-- ----------------------------------------------------------------------------
 -- GAME_PLAYER_STATS (one row per player per game)
 -- ----------------------------------------------------------------------------
 create table if not exists game_player_stats (
@@ -160,6 +173,7 @@ create table if not exists game_player_stats (
   game_id uuid not null references games(id) on delete cascade,
   player_id uuid not null references players(id),
   team_id uuid references teams(id),
+  champion_id uuid references champions(id) on delete set null,
   win boolean not null default false,
   kills int not null default 0,
   deaths int not null default 0,
@@ -174,6 +188,21 @@ create table if not exists game_player_stats (
 
 create index if not exists idx_gps_game on game_player_stats(game_id);
 create index if not exists idx_gps_player on game_player_stats(player_id);
+create index if not exists idx_gps_champion on game_player_stats(champion_id);
+
+-- ----------------------------------------------------------------------------
+-- GAME_BANS (one row per champion banned by a team in a given game)
+-- ----------------------------------------------------------------------------
+create table if not exists game_bans (
+  id uuid primary key default gen_random_uuid(),
+  game_id uuid not null references games(id) on delete cascade,
+  team_id uuid references teams(id),
+  champion_id uuid references champions(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_game_bans_game on game_bans(game_id);
+create index if not exists idx_game_bans_champion on game_bans(champion_id);
 
 -- ----------------------------------------------------------------------------
 -- PREDICTIONS
@@ -324,6 +353,44 @@ from predictions pr
 join matches m on m.id = pr.match_id
 group by pr.predictor_name;
 
+-- champion_stats: pick rate / ban rate / win rate per champion, season-aware.
+-- Rates are a percentage of that season's total played games (games with a
+-- winner) - a champion can appear in both teams' games so pick_rate/ban_rate
+-- can exceed 100% if it's ever picked/banned by both sides in the same game.
+create or replace view champion_stats
+with (security_invoker = true) as
+select
+  c.id as champion_id,
+  c.name,
+  c.icon_url,
+  s.id as season_id,
+  s.name as season_name,
+  coalesce(gp.total_games, 0)::int as games_in_season,
+  coalesce(picks.times_picked, 0)::int as times_picked,
+  coalesce(picks.wins, 0)::int as wins,
+  coalesce(bans.times_banned, 0)::int as times_banned,
+  round(100.0 * coalesce(picks.times_picked, 0) / nullif(gp.total_games, 0), 1)::float8 as pick_rate,
+  round(100.0 * coalesce(bans.times_banned, 0) / nullif(gp.total_games, 0), 1)::float8 as ban_rate,
+  round(100.0 * coalesce(picks.wins, 0) / nullif(picks.times_picked, 0), 1)::float8 as win_rate
+from champions c
+cross join seasons s
+left join (
+  select season_id, count(*) as total_games from games where winner_id is not null group by season_id
+) gp on gp.season_id = s.id
+left join (
+  select gps.champion_id, g.season_id, count(*) as times_picked, count(*) filter (where gps.win) as wins
+  from game_player_stats gps
+  join games g on g.id = gps.game_id
+  where gps.champion_id is not null
+  group by gps.champion_id, g.season_id
+) picks on picks.champion_id = c.id and picks.season_id = s.id
+left join (
+  select gb.champion_id, g.season_id, count(*) as times_banned
+  from game_bans gb
+  join games g on g.id = gb.game_id
+  group by gb.champion_id, g.season_id
+) bans on bans.champion_id = c.id and bans.season_id = s.id;
+
 -- ============================================================================
 -- ROW LEVEL SECURITY
 -- Public (anon) can read everything. Only a signed-in admin can write -
@@ -341,6 +408,8 @@ alter table bracket_matches enable row level security;
 alter table matches enable row level security;
 alter table games enable row level security;
 alter table game_player_stats enable row level security;
+alter table champions enable row level security;
+alter table game_bans enable row level security;
 alter table predictions enable row level security;
 alter table news_items enable row level security;
 alter table league_settings enable row level security;
@@ -354,6 +423,8 @@ create policy "public read bracket_matches" on bracket_matches for select using 
 create policy "public read matches" on matches for select using (true);
 create policy "public read games" on games for select using (true);
 create policy "public read game_player_stats" on game_player_stats for select using (true);
+create policy "public read champions" on champions for select using (true);
+create policy "public read game_bans" on game_bans for select using (true);
 create policy "public read predictions" on predictions for select using (true);
 create policy "public read news_items" on news_items for select using (true);
 
@@ -389,6 +460,14 @@ create policy "admin delete games" on games for delete using (auth.role() = 'aut
 create policy "admin write game_player_stats" on game_player_stats for insert with check (auth.role() = 'authenticated');
 create policy "admin update game_player_stats" on game_player_stats for update using (auth.role() = 'authenticated');
 create policy "admin delete game_player_stats" on game_player_stats for delete using (auth.role() = 'authenticated');
+
+create policy "admin write champions" on champions for insert with check (auth.role() = 'authenticated');
+create policy "admin update champions" on champions for update using (auth.role() = 'authenticated');
+create policy "admin delete champions" on champions for delete using (auth.role() = 'authenticated');
+
+create policy "admin write game_bans" on game_bans for insert with check (auth.role() = 'authenticated');
+create policy "admin update game_bans" on game_bans for update using (auth.role() = 'authenticated');
+create policy "admin delete game_bans" on game_bans for delete using (auth.role() = 'authenticated');
 
 create policy "admin write news_items" on news_items for insert with check (auth.role() = 'authenticated');
 create policy "admin update news_items" on news_items for update using (auth.role() = 'authenticated');
@@ -439,14 +518,14 @@ create policy "admin update settings" on league_settings for update to authentic
 create policy "public read rules" on league_settings for select to anon using (true);
 
 -- Explicit grants (Supabase usually sets these up, but this makes it explicit)
-grant select on team_standings, player_stats_aggregate, prediction_leaderboard to anon, authenticated;
+grant select on team_standings, player_stats_aggregate, prediction_leaderboard, champion_stats to anon, authenticated;
 grant select, insert, update, delete on
   teams, players, seasons, tournaments, bracket_matches, matches,
-  games, game_player_stats, news_items
+  games, game_player_stats, champions, game_bans, news_items
   to authenticated;
 grant select on
   teams, players, seasons, tournaments, bracket_matches, matches,
-  games, game_player_stats, news_items
+  games, game_player_stats, champions, game_bans, news_items
   to anon;
 grant select, insert, update on predictions to anon;
 grant select, insert, update, delete on predictions to authenticated;
@@ -467,6 +546,10 @@ insert into storage.buckets (id, name, public)
 values ('player-photos', 'player-photos', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('champion-icons', 'champion-icons', true)
+on conflict (id) do nothing;
+
 create policy "admin write team-logos" on storage.objects for insert to authenticated
   with check (bucket_id = 'team-logos');
 create policy "admin update team-logos" on storage.objects for update to authenticated
@@ -480,3 +563,10 @@ create policy "admin update player-photos" on storage.objects for update to auth
   using (bucket_id = 'player-photos');
 create policy "admin delete player-photos" on storage.objects for delete to authenticated
   using (bucket_id = 'player-photos');
+
+create policy "admin write champion-icons" on storage.objects for insert to authenticated
+  with check (bucket_id = 'champion-icons');
+create policy "admin update champion-icons" on storage.objects for update to authenticated
+  using (bucket_id = 'champion-icons');
+create policy "admin delete champion-icons" on storage.objects for delete to authenticated
+  using (bucket_id = 'champion-icons');

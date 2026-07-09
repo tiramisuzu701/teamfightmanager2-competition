@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
+import { getSession } from "./auth.js";
 
 renderNav("match.html");
 
@@ -36,8 +37,9 @@ async function init() {
   ]);
 
   document.title = `${aTeam?.name || "Team A"} vs ${bTeam?.name || "Team B"} - Teamfight Manager 2 League`;
+  const session = await getSession();
   renderHeader(match, aTeam, bTeam);
-  await loadGames(match, aTeam, bTeam);
+  await loadGames(match, aTeam, bTeam, !!session);
 }
 
 function renderHeader(match, aTeam, bTeam) {
@@ -71,7 +73,7 @@ function teamChip(team) {
   return `${logo}<a href="team.html?id=${team.id}">${esc(team.name)}</a>`;
 }
 
-async function loadGames(match, aTeam, bTeam) {
+async function loadGames(match, aTeam, bTeam, isAdmin) {
   const container = document.getElementById("games-breakdown");
   const { data: games, error } = await supabase
     .from("games")
@@ -89,9 +91,14 @@ async function loadGames(match, aTeam, bTeam) {
   }
 
   const gameIds = games.map((g) => g.id);
-  const { data: gps } = await supabase.from("game_player_stats").select("*").in("game_id", gameIds);
-  const { data: playerData } = await supabase.from("players").select("id, name, photo_url");
+  const [{ data: gps }, { data: playerData }, { data: championData }, { data: bans }] = await Promise.all([
+    supabase.from("game_player_stats").select("*").in("game_id", gameIds),
+    supabase.from("players").select("id, name, photo_url"),
+    supabase.from("champions").select("id, name, icon_url"),
+    supabase.from("game_bans").select("*").in("game_id", gameIds),
+  ]);
   const playersById = Object.fromEntries((playerData || []).map((p) => [p.id, p]));
+  const champsById = Object.fromEntries((championData || []).map((c) => [c.id, c]));
 
   const statsByGame = {};
   (gps || []).forEach((row) => {
@@ -99,10 +106,30 @@ async function loadGames(match, aTeam, bTeam) {
     statsByGame[row.game_id].push(row);
   });
 
-  container.innerHTML = games.map((g) => renderGameCard(g, statsByGame[g.id] || [], aTeam, bTeam, playersById)).join("");
+  const bansByGame = {};
+  (bans || []).forEach((row) => {
+    bansByGame[row.game_id] = bansByGame[row.game_id] || [];
+    bansByGame[row.game_id].push(row);
+  });
+
+  container.innerHTML = games
+    .map((g) => renderGameCard(g, statsByGame[g.id] || [], bansByGame[g.id] || [], aTeam, bTeam, playersById, champsById, isAdmin))
+    .join("");
 }
 
-function renderGameCard(game, stats, aTeam, bTeam, playersById) {
+function champChip(champ) {
+  if (!champ) return `<span class="text-muted">-</span>`;
+  const icon = champ.icon_url ? `<img src="${esc(champ.icon_url)}" alt="" class="thumb-logo" style="width:20px;height:20px;margin-right:5px" />` : "";
+  return `${icon}${esc(champ.name)}`;
+}
+
+function renderBansLine(bans, teamName, champsById) {
+  if (!bans || bans.length === 0) return `<span class="text-muted">${esc(teamName)} bans: none recorded</span>`;
+  const names = bans.map((b) => (champsById[b.champion_id] ? esc(champsById[b.champion_id].name) : "Unknown")).join(", ");
+  return `<span class="text-muted">${esc(teamName)} bans:</span> ${names}`;
+}
+
+function renderGameCard(game, stats, bans, aTeam, bTeam, playersById, champsById, isAdmin) {
   const winner = game.winner_id === aTeam?.id ? aTeam : game.winner_id === bTeam?.id ? bTeam : null;
 
   const sorted = stats.slice().sort((r1, r2) => {
@@ -113,7 +140,7 @@ function renderGameCard(game, stats, aTeam, bTeam, playersById) {
 
   const rowsHtml =
     sorted.length === 0
-      ? `<tr><td colspan="${STAT_FIELDS.length + 2}" class="empty-state">No player stats logged for this game.</td></tr>`
+      ? `<tr><td colspan="${STAT_FIELDS.length + 3}" class="empty-state">No player stats logged for this game.</td></tr>`
       : sorted
           .map((row) => {
             const p = playersById[row.player_id];
@@ -121,10 +148,14 @@ function renderGameCard(game, stats, aTeam, bTeam, playersById) {
           <tr>
             <td>${row.win ? `<span class="win-badge">W</span>` : `<span class="loss-badge">L</span>`}</td>
             <td>${p ? `<a href="player.html?id=${p.id}">${esc(p.name)}</a>` : "Unknown"}</td>
+            <td>${champChip(champsById[row.champion_id])}</td>
             ${STAT_FIELDS.map((f) => `<td class="text-right num">${row[f.key]}</td>`).join("")}
           </tr>`;
           })
           .join("");
+
+  const aBans = bans.filter((b) => b.team_id === game.team_a_id);
+  const bBans = bans.filter((b) => b.team_id === game.team_b_id);
 
   return `
     <div class="card" style="margin-bottom:14px">
@@ -133,11 +164,16 @@ function renderGameCard(game, stats, aTeam, bTeam, playersById) {
         <span class="text-muted" style="font-size:0.85rem">
           ${winner ? `<strong>${esc(winner.name)}</strong> won` : "No winner recorded"}
           ${game.duration_minutes ? ` &middot; ${game.duration_minutes} min` : ""}
+          ${isAdmin ? ` &middot; <a href="edit-game.html?id=${game.id}">Edit</a>` : ""}
         </span>
       </div>
       ${game.notes ? `<p class="text-muted" style="font-size:0.82rem;margin:6px 0">${esc(game.notes)}</p>` : ""}
+      <div class="field-row" style="font-size:0.82rem;margin:6px 0">
+        <div>${renderBansLine(aBans, aTeam?.name || "Team A", champsById)}</div>
+        <div>${renderBansLine(bBans, bTeam?.name || "Team B", champsById)}</div>
+      </div>
       <table class="roster-table" style="margin-top:8px">
-        <thead><tr><th></th><th>Player</th>${STAT_FIELDS.map((f) => `<th>${f.label}</th>`).join("")}</tr></thead>
+        <thead><tr><th></th><th>Player</th><th>Champion</th>${STAT_FIELDS.map((f) => `<th>${f.label}</th>`).join("")}</tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>`;

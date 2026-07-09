@@ -6,6 +6,7 @@ const TABS = [
   { href: "index.html", label: "Home" },
   { href: "standings.html", label: "Standings" },
   { href: "players.html", label: "Players" },
+  { href: "champions.html", label: "Champions" },
   { href: "calendar.html", label: "Calendar" },
   { href: "predictions.html", label: "Predictions" },
   { href: "brackets.html", label: "Brackets" },

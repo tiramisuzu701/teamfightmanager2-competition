@@ -82,7 +82,11 @@
         <label for="notes">Notes (optional)</label>
         <textarea id="notes" rows="2" placeholder="e.g. close game, comeback"></textarea>
       </div>
-      <p class="text-muted" style="font-size:0.85rem;margin-top:-6px">Check "Played" for each player who took part, then fill in their stats.</p>
+      <div class="field-row">
+        <div class="field" id="team-a-bans"></div>
+        <div class="field" id="team-b-bans"></div>
+      </div>
+      <p class="text-muted" style="font-size:0.85rem;margin-top:-6px">Check "Played" for each player who took part, then fill in their champion pick and stats.</p>
       <div id="rosters-container"></div>
       <button type="button" class="btn btn-primary" id="submit-btn" disabled>Save Game</button>
       <div id="submit-msg" class="form-msg"></div>

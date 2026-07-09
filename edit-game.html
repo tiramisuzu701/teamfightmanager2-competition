@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edit Game - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <h1 class="page-title">Edit Game</h1>
+    <p class="page-subtitle" id="edit-subtitle">Correct a mistake in an already-logged game. Admin only.</p>
+
+    <div class="card" id="edit-card" style="display:none">
+      <div class="field-row">
+        <div class="field">
+          <label for="duration">Duration (minutes)</label>
+          <input type="number" id="duration" min="0" step="0.1" placeholder="e.g. 32" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Winner (this game)</label>
+        <div class="field-row" id="winner-picker">
+          <button type="button" class="btn" data-side="a">Team A</button>
+          <button type="button" class="btn" data-side="b">Team B</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="notes">Notes (optional)</label>
+        <textarea id="notes" rows="2" placeholder="e.g. close game, comeback"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field" id="team-a-bans"></div>
+        <div class="field" id="team-b-bans"></div>
+      </div>
+      <p class="text-muted" style="font-size:0.85rem;margin-top:-6px">Check "Played" for each player who took part, then fill in their champion pick and stats.</p>
+      <div id="rosters-container"></div>
+      <button type="button" class="btn btn-primary" id="save-btn">Save Corrections</button>
+      <a href="#" class="btn btn-ghost" id="back-to-match-link">Back to match</a>
+      <div id="save-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card" id="not-found-card" style="display:none">
+      <p class="empty-state" id="not-found-msg">Game not found.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/editGame.js"></script>
+</body>
+</html>

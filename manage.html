@@ -97,6 +97,30 @@
         <tbody id="players-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
+
+    <div class="card">
+      <h2 class="card-title">Add a Champion</h2>
+      <p class="text-muted" style="font-size:0.78rem">
+        Champions show up as pick/ban options on the Log Game tab and are
+        tracked on the Champions stats page.
+      </p>
+      <div class="field-row">
+        <div class="field">
+          <label for="new-champion-name">Champion name</label>
+          <input type="text" id="new-champion-name" placeholder="e.g. Nightbane" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="add-champion-btn">Add Champion</button>
+      <div id="champion-msg" class="form-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Champions</h2>
+      <table>
+        <thead><tr><th>Icon</th><th>Champion</th><th></th></tr></thead>
+        <tbody id="champions-body"><tr><td colspan="3" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
   </main>
 
   <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>

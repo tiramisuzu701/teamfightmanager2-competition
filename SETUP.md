@@ -84,26 +84,35 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
 
 ## Day-to-day use once it's live
 
-- **Manage tab**: add/remove teams and players, upload a logo/photo for
-  each (click "Upload" next to a team or player row), start a new season,
-  and set an optional Discord webhook URL for auto-announcements.
+- **Manage tab**: add/remove teams, players, and champions (upload a
+  logo/photo/icon for each by clicking "Upload" next to a row), start a new
+  season, and set an optional Discord webhook URL for auto-announcements.
+  The champion list starts empty on purpose - add the champions your league
+  actually uses before your first Log Game session so they're selectable.
 - **Calendar tab**: schedule upcoming matches (pick two teams, a best-of
   format - 3, 5, or 7 - a date/time, optional notes). Anyone can browse the
   month-by-month schedule; only admins see the "+ Schedule Match" button
   and can cancel a scheduled match.
 - **Log Game tab**: matches are played in sets of 3, 5, or 7 games. Pick a
   scheduled match to continue (or start a new one on the spot by choosing
-  two teams and a best-of format), then log each game's winner and each
-  player's stats as it's played. The match completes itself automatically
-  the moment a team wins the majority (e.g. 2 of 3) - you never need to log
-  a game that wasn't actually played. If a match needs to end before it's
-  decided (a forfeit or no-show), hit "End Match Now" and pick the winner
-  directly. Standings, Game Difference, and player leaderboards all update
-  as soon as a match completes, and (if a Discord webhook is set) the
-  result posts to your channel.
+  two teams and a best-of format), then log each game's winner, each
+  player's stats and champion pick, and each team's bans, as it's played.
+  The match completes itself automatically the moment a team wins the
+  majority (e.g. 2 of 3) - you never need to log a game that wasn't
+  actually played. If a match needs to end before it's decided (a forfeit
+  or no-show), hit "End Match Now" and pick the winner directly. Standings,
+  Game Difference, player leaderboards, and Champions stats all update as
+  soon as a match completes, and (if a Discord webhook is set) the result
+  posts to your channel.
 - **Match pages**: click any match - from Standings, a Team page, the
   Calendar, or right after logging one - to see its full series score and
-  every individual game's box score (per-player kills/deaths/assists/etc.).
+  every individual game's box score (per-player kills/deaths/assists/etc.,
+  plus each player's champion pick and each team's bans). Signed-in admins
+  see an "Edit" link next to each game to correct a mistake later - see
+  "Fixing a mistake in a logged game" below.
+- **Champions tab**: a sortable table of every champion's pick rate, ban
+  rate, times picked/banned, wins, and win rate for the selected season -
+  updates automatically as matches are logged. No admin action needed.
 - **Predictions tab**: open to everyone, no login required - visitors type
   a display name once (remembered on their device) and pick winners for
   the day's matches. Picks lock 30 minutes before each match starts, and a
@@ -141,6 +150,39 @@ logged in) - you never need to touch GitHub for day-to-day league admin.
   any of the above admin-only actions; everyone else sees a read-only
   public site (except for making predictions, which never requires login).
 
+## Fixing a mistake in a logged game
+
+Mistakes happen - a stat gets typed wrong, the wrong champion gets picked in
+the log, or even the wrong winner gets recorded for a game. To fix any of
+that:
+
+1. Open the match's page (`match.html`) while signed in as admin.
+2. Click **Edit** next to the game that needs correcting.
+3. Change whatever needs changing - duration, notes, the game's winner,
+   any player's stats or champion pick, or either team's bans - and click
+   **Save Corrections**.
+
+A few things to know about how this works:
+
+- Saving a game's corrections **replaces** its player stats and bans with
+  exactly what's on the form - if you remove a ban row or uncheck a player
+  who was previously marked as played, that pick/ban/stat line is gone, not
+  merged with the old one.
+- If you change **who won** a game, the parent match's score and status
+  are recalculated automatically from every game now on record for that
+  match, using the same "first to the majority wins the set" rule as live
+  logging. This can flip a match's outcome: for example, correcting a
+  Bo3 match's second game can turn a "Final, 2-0" match back into an
+  "In Progress, 1-1" one if that was the mistake. Standings, Game
+  Difference, and Champions stats reflect the correction automatically the
+  next time you view them.
+- The one exception is a match that was **ended early** (a forfeit or
+  no-show, decided by an admin's explicit call rather than by majority).
+  Editing a game under an early-ended match only corrects that game's own
+  win-count contribution; the match's status, winner, and completion time
+  stay exactly as you set them when you ended it - editing a game doesn't
+  second-guess that deliberate decision.
+
 ## Setting up Discord announcements (optional)
 
 1. In Discord, go to your server's **Server Settings -> Integrations ->
@@ -157,10 +199,12 @@ holding it could post into your channel.
 
 ## Notes and limitations
 
-- **Team logos / player photos**: stored in two Supabase Storage buckets
-  (`team-logos`, `player-photos`) I already created and configured - public
-  read, admin-only upload. Nothing extra to set up; just use the "Upload"
-  button next to any team/player row on the Manage tab.
+- **Team logos / player photos / champion icons**: stored in three Supabase
+  Storage buckets (`team-logos`, `player-photos`, `champion-icons`) I
+  already created and configured - public read, admin-only upload. Nothing
+  extra to set up; just use the "Upload" button next to any team/player/
+  champion row on the Manage tab. A champion's icon is optional - it
+  displays fine as plain text everywhere if you skip it.
 - **Player of the Week**: a simple weighted formula (kills, assists,
   deaths, and a win bonus) over the last 7 days of logged games - it's meant
   to spotlight a standout performer, not serve as an official award.
@@ -182,6 +226,11 @@ holding it could post into your channel.
 - **Team/player deletion**: deleting a team keeps its players (they become
   unassigned) and keeps historical stats intact. Deleting a player removes
   their logged game stats along with them.
+- **Champion deletion**: deleting a champion from the Manage tab keeps
+  every game's stats and bans intact - any pick/ban that referenced it
+  just loses that reference (shown as unpicked/unknown going forward)
+  rather than being deleted or blocked. This matches how team/player
+  deletion behaves elsewhere on the site.
 - **Predictions identity**: predictions use a simple typed display name,
   not a real account - anyone who types the same name as someone else
   shares that person's picks and leaderboard record, so encourage your

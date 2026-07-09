@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Champions - Teamfight Manager 2 League</title>
+<link rel="icon" href="data:," />
+<script>(function(){try{if(localStorage.getItem("tfm2_theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();</script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="nav-root"></div>
+
+  <main>
+    <div class="stat-toggle-row">
+      <div>
+        <h1 class="page-title">Champions</h1>
+        <p class="page-subtitle">Pick rate, ban rate, and win rate for the selected season.</p>
+      </div>
+      <div style="min-width:200px">
+        <label for="season-select">Season</label>
+        <select id="season-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <table id="champions-table">
+        <thead>
+          <tr>
+            <th data-key="name">Champion</th>
+            <th data-key="times_picked" class="text-right">Picks</th>
+            <th data-key="pick_rate" class="text-right sorted">Pick %</th>
+            <th data-key="times_banned" class="text-right">Bans</th>
+            <th data-key="ban_rate" class="text-right">Ban %</th>
+            <th data-key="wins" class="text-right">Wins</th>
+            <th data-key="win_rate" class="text-right">Win %</th>
+          </tr>
+        </thead>
+        <tbody id="champions-body">
+          <tr><td colspan="7" class="empty-state">Loading champions...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">Teamfight Manager 2 League &middot; Built with Supabase + GitHub Pages</footer>
+
+  <script type="module" src="js/champions.js"></script>
+</body>
+</html>

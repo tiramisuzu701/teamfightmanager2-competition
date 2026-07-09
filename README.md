@@ -24,6 +24,8 @@ own page. See "How matches work" below for details.
 - **Players** (`players.html`) - full season stat table for every player,
   plus a Top-10 leaderboard mode for any stat (kills, KDA, CS, gold,
   damage, towers, objectives, wins...), also season-aware.
+- **Champions** (`champions.html`) - a sortable table of every champion's
+  pick rate, ban rate, times picked/banned, wins, and win rate, season-aware.
 - **Calendar** (`calendar.html`) - month-by-month view of scheduled matches
   (each with its best-of format); admins can schedule new matches and
   cancel existing ones.
@@ -52,17 +54,27 @@ own page. See "How matches work" below for details.
   chart, and full per-game log; reached by clicking any player name.
 - **Match pages** (`match.html?id=...`) - a single match's series score,
   best-of format, and status, with every individual game's full box score
-  underneath; reached by clicking any match from Standings, Team pages, the
-  Calendar, or right after logging one.
+  underneath (including each player's champion pick and each team's bans
+  for that game); reached by clicking any match from Standings, Team pages,
+  the Calendar, or right after logging one. Signed-in admins also see an
+  "Edit" link per game to correct it later.
 - **Log Game** (`log-game.html`) - admin-only flow to log a match: start a
   new best-of-3/5/7 set (or continue a scheduled one), then log each game
-  one at a time as it's played. The match completes itself automatically
+  one at a time as it's played, including each player's champion pick and
+  each team's bans for that game. The match completes itself automatically
   once a team wins the majority, or an admin can end it early (e.g. a
   forfeit) and pick the winner directly.
-- **Manage** (`manage.html`) - admin-only screen to add/remove teams and
-  players, upload team logos/player photos, start a new season (resets
-  Standings/Players to zero while keeping every past match/game and season
-  browsable), and set an optional Discord webhook for auto-announcements.
+- **Edit Game** (`edit-game.html`) - admin-only page (reached via an "Edit"
+  link next to any game on its match page) to correct an already-logged
+  game after the fact: winner, duration, notes, every player's stats and
+  champion pick, and both teams' bans. See "How champion picks/bans and
+  editing work" below for what happens to the parent match when a
+  correction changes who won.
+- **Manage** (`manage.html`) - admin-only screen to add/remove teams,
+  players, and champions (with optional icons), upload team logos/player
+  photos, start a new season (resets Standings/Players to zero while
+  keeping every past match/game and season browsable), and set an optional
+  Discord webhook for auto-announcements.
 - **Login** (`login.html`) - single admin login (no public sign-up).
 - **Light/dark theme toggle** - in the nav bar on every page, persisted per
   visitor's browser.
@@ -93,6 +105,38 @@ own page. See "How matches work" below for details.
   a bracket match's score is still reported directly by an admin rather
   than being built from a logged best-of-N set.
 
+## How champion picks/bans and editing work
+
+- Champions are a simple admin-maintained list (Manage tab: name + optional
+  icon) - the site doesn't ship with a pre-built champion list, since only
+  you know which champions your league actually uses. Add them as needed;
+  they immediately become selectable when logging games.
+- Each **game** (not each match) has its own draft: while logging a game,
+  admins optionally pick a champion for each player who played, and add as
+  many bans per team as actually happened (no fixed count is enforced -
+  some drafts ban more than others).
+- The **Champions** page (`champions.html`) tracks, per season: how many
+  games a champion was picked/banned in, its pick rate and ban rate (percent
+  of that season's played games), its win count, and its win rate (percent
+  of games it was picked in that were won).
+- **Editing a logged game** (`edit-game.html`, via the "Edit" link on a
+  match page) lets an admin fix a mistake after the fact - the winner,
+  duration, notes, every player's stats and champion pick, and both teams'
+  bans are all correctable. Saving replaces that game's stats/bans outright
+  with whatever's on the form (so removing a row on the edit form removes
+  that pick/ban, it isn't merged with what was there before).
+- If editing a game changes **who won that game**, the parent match's
+  score and outcome are recalculated automatically the same way live
+  logging works: win counts are retotaled from every game under that match,
+  and if that changes whether a team has reached the majority, the match's
+  status/winner flip accordingly (e.g. correcting a game 2 result on a
+  match that was 2-0 and "Final" can put it back to 1-1 and "In Progress").
+  The one exception is a match that was ended early (a forfeit/no-show, not
+  decided by majority) - editing a game under it only corrects the raw win
+  counts; the match's status, winner, and completion time are left exactly
+  as the admin set them when they ended it, since that was a deliberate
+  override, not something majority-based logic should second-guess.
+
 ## How it's built
 
 Plain HTML/CSS/JavaScript with no build step or framework, so it can be
@@ -107,6 +151,7 @@ readable while restricting all writes to a signed-in admin account.
 index.html          Home page (welcome + Player of the Week + snapshot)
 standings.html       Standings page (season-aware, match-based W/L + Game Diff)
 players.html         Player stats + leaderboards (season-aware)
+champions.html       Champion pick/ban/win rate stats (season-aware)
 calendar.html        Month-by-month schedule of matches
 predictions.html     Name-tag match predictions + leaderboard
 brackets.html        Tournament brackets (+ seed-from-standings)
@@ -115,17 +160,19 @@ news.html            Trades / roster moves / announcements feed
 rules.html           Public rules/handbook (admin-editable)
 team.html            Team profile (roster, record, recent matches, head-to-head)
 player.html          Player profile (stats, trend, per-game log)
-match.html           Match detail: series score + every game's box score
-log-game.html        Admin: log a match, one game at a time
-manage.html          Admin: teams/players, logos/photos, seasons, Discord
+match.html           Match detail: series score + every game's box score + picks/bans
+log-game.html        Admin: log a match, one game at a time (+ champion picks/bans)
+edit-game.html       Admin: correct an already-logged game
+manage.html          Admin: teams/players/champions, logos/photos, seasons, Discord
 login.html           Admin login
 css/style.css        Shared styling (incl. light/dark theme variables)
 js/                  Application code
   config.js                     <- put your Supabase URL/key here
   supabaseClient.js, auth.js, nav.js, seasons.js, settings.js, discord.js   Shared plumbing
-  home.js, standings.js, players.js, calendar.js, predictions.js,
+  gameForm.js                   Shared roster/stats/champion-pick/ban form logic (Log Game + Edit Game)
+  home.js, standings.js, players.js, champions.js, calendar.js, predictions.js,
   news.js, rules.js, team.js, player.js, match.js, records.js,
-  brackets.js, logGame.js, manage.js, loginPage.js
+  brackets.js, logGame.js, editGame.js, manage.js, loginPage.js
   bracketGen.js                Double-elimination / round-robin generation
 sql/schema.sql              Database tables, views, storage buckets, and security policies
 sql/seed_demo_data.sql          Optional sample data

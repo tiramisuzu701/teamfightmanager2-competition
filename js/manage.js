@@ -10,6 +10,7 @@ const session = await requireAdmin();
 
 let teams = [];
 let players = [];
+let champions = [];
 
 async function loadIntegrations() {
   const input = document.getElementById("discord-webhook");
@@ -79,18 +80,21 @@ document.getElementById("start-season-btn").addEventListener("click", async () =
 });
 
 async function loadAll() {
-  const [{ data: teamData, error: tErr }, { data: playerData, error: pErr }] = await Promise.all([
+  const [{ data: teamData, error: tErr }, { data: playerData, error: pErr }, { data: championData, error: cErr }] = await Promise.all([
     supabase.from("teams").select("id, name, short_name, logo_url").order("name"),
     supabase.from("players").select("id, name, role, team_id, photo_url").order("name"),
+    supabase.from("champions").select("id, name, icon_url").order("name"),
   ]);
-  if (tErr || pErr) {
-    console.error(tErr || pErr);
+  if (tErr || pErr || cErr) {
+    console.error(tErr || pErr || cErr);
     return;
   }
   teams = teamData || [];
   players = playerData || [];
+  champions = championData || [];
   renderTeams();
   renderPlayers();
+  renderChampions();
   renderTeamDropdown();
 }
 
@@ -170,6 +174,84 @@ function renderPlayers() {
       if (input.files[0]) uploadPlayerPhoto(input.dataset.playerId, input.files[0]);
     });
   });
+}
+
+function renderChampions() {
+  const body = document.getElementById("champions-body");
+  if (champions.length === 0) {
+    body.innerHTML = `<tr><td colspan="3" class="empty-state">No champions yet - add one above.</td></tr>`;
+    return;
+  }
+  body.innerHTML = champions
+    .map(
+      (c) => `
+      <tr>
+        <td>
+          ${c.icon_url ? `<img src="${esc(c.icon_url)}" alt="" class="thumb-logo" />` : `<span class="thumb-placeholder">?</span>`}
+          <input type="file" accept="image/*" class="champion-icon-input" data-champion-id="${c.id}" style="display:none" />
+          <button class="btn btn-sm btn-ghost" data-upload-champion-icon="${c.id}">Upload</button>
+        </td>
+        <td class="team-name">${esc(c.name)}</td>
+        <td><button class="btn btn-sm btn-danger" data-delete-champion="${c.id}">Delete</button></td>
+      </tr>`
+    )
+    .join("");
+  body.querySelectorAll("[data-delete-champion]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteChampion(btn.dataset.deleteChampion));
+  });
+  body.querySelectorAll("[data-upload-champion-icon]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = body.querySelector(`.champion-icon-input[data-champion-id="${btn.dataset.uploadChampionIcon}"]`);
+      input.click();
+    });
+  });
+  body.querySelectorAll(".champion-icon-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.files[0]) uploadChampionIcon(input.dataset.championId, input.files[0]);
+    });
+  });
+}
+
+async function uploadChampionIcon(championId, file) {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase();
+  const path = `${championId}/icon.${ext}`;
+  const { error: uploadError } = await supabase.storage.from("champion-icons").upload(path, file, { upsert: true, cacheControl: "3600" });
+  if (uploadError) return alert("Upload failed: " + uploadError.message);
+  const { data } = supabase.storage.from("champion-icons").getPublicUrl(path);
+  const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+  const { error: updateError } = await supabase.from("champions").update({ icon_url: publicUrl }).eq("id", championId);
+  if (updateError) return alert("Icon uploaded, but saving it to the champion failed: " + updateError.message);
+  loadAll();
+}
+
+document.getElementById("add-champion-btn").addEventListener("click", async () => {
+  const msg = document.getElementById("champion-msg");
+  const name = document.getElementById("new-champion-name").value.trim();
+  if (!name) {
+    msg.textContent = "Champion name is required.";
+    msg.className = "form-msg error";
+    return;
+  }
+  msg.textContent = "Saving...";
+  msg.className = "form-msg";
+  const { error } = await supabase.from("champions").insert({ name });
+  if (error) {
+    msg.textContent = "Error: " + error.message;
+    msg.className = "form-msg error";
+    return;
+  }
+  document.getElementById("new-champion-name").value = "";
+  msg.textContent = "Champion added!";
+  msg.className = "form-msg success";
+  loadAll();
+});
+
+async function deleteChampion(id) {
+  const ok = window.confirm("Delete this champion? Any past pick/ban records referencing it will lose that reference (game stats themselves are kept).");
+  if (!ok) return;
+  const { error } = await supabase.from("champions").delete().eq("id", id);
+  if (error) return alert("Error: " + error.message);
+  loadAll();
 }
 
 async function uploadTeamLogo(teamId, file) {

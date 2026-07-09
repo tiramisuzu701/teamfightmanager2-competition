@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient.js";
 import { renderNav } from "./nav.js";
 import { requireAdmin } from "./auth.js";
 import { postToDiscord } from "./discord.js";
+import { renderRosters, collectRosterRows, renderBans, collectBans } from "./gameForm.js";
 
 renderNav("log-game.html");
 const session = await requireAdmin();
@@ -9,20 +10,10 @@ const session = await requireAdmin();
 // login.html - the guards below just stop this page's logic from doing
 // any unnecessary work while that navigation completes.
 
-const STAT_FIELDS = [
-  { key: "kills", label: "K" },
-  { key: "deaths", label: "D" },
-  { key: "assists", label: "A" },
-  { key: "cs", label: "CS" },
-  { key: "gold", label: "Gold" },
-  { key: "damage", label: "Damage" },
-  { key: "towers", label: "Towers" },
-  { key: "epic_monsters", label: "Epic Mon." },
-];
-
 let teams = [];
 let teamsById = {};
 let players = [];
+let champions = [];
 let bracketMatches = [];
 let tournaments = [];
 let existingMatches = [];
@@ -32,9 +23,10 @@ let activeMatch = null; // the match currently being logged into
 let activeMatchGames = []; // games already logged for activeMatch, in order
 
 async function init() {
-  const [{ data: teamData }, { data: playerData }, { data: bmData }, { data: tData }] = await Promise.all([
+  const [{ data: teamData }, { data: playerData }, { data: championData }, { data: bmData }, { data: tData }] = await Promise.all([
     supabase.from("teams").select("id, name").order("name"),
     supabase.from("players").select("id, name, role, team_id").order("name"),
+    supabase.from("champions").select("id, name, icon_url").order("name"),
     supabase.from("bracket_matches").select("id, tournament_id, bracket, group_name, round, match_number, team_a_id, team_b_id, status").in("status", ["pending", "in_progress"]),
     supabase.from("tournaments").select("id, name"),
   ]);
@@ -42,6 +34,7 @@ async function init() {
   teams = teamData || [];
   teamsById = Object.fromEntries(teams.map((t) => [t.id, t]));
   players = playerData || [];
+  champions = championData || [];
   bracketMatches = bmData || [];
   tournaments = tData || [];
 
@@ -239,44 +232,10 @@ function prepareGameForm() {
     });
   });
 
-  renderRosters(aTeam, bTeam);
+  renderRosters(document.getElementById("rosters-container"), [aTeam, bTeam], players, champions);
+  renderBans(document.getElementById("team-a-bans"), aTeam?.name || "Team A", champions);
+  renderBans(document.getElementById("team-b-bans"), bTeam?.name || "Team B", champions);
   document.getElementById("submit-btn").disabled = true;
-}
-
-function renderRosters(aTeam, bTeam) {
-  const container = document.getElementById("rosters-container");
-  container.innerHTML = [aTeam, bTeam]
-    .filter(Boolean)
-    .map((team) => {
-      const roster = players.filter((p) => p.team_id === team.id);
-      if (roster.length === 0) {
-        return `<h3 class="roster-team-heading">${esc(team.name)}</h3><p class="text-muted">No players found on this team yet. Add players on the <a href="manage.html">Manage</a> tab first.</p>`;
-      }
-      const rows = roster
-        .map(
-          (p) => `
-        <tr data-player-id="${p.id}" data-team-id="${team.id}">
-          <td><input type="checkbox" class="played-check" /></td>
-          <td>${esc(p.name)}<div class="text-muted" style="font-size:0.75rem">${esc(p.role || "")}</div></td>
-          ${STAT_FIELDS.map((f) => `<td><input type="number" min="0" class="stat-input" data-field="${f.key}" value="0" disabled /></td>`).join("")}
-        </tr>`
-        )
-        .join("");
-      return `
-        <h3 class="roster-team-heading">${esc(team.name)}</h3>
-        <table class="roster-table">
-          <thead><tr><th>Played</th><th>Player</th>${STAT_FIELDS.map((f) => `<th>${f.label}</th>`).join("")}</tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-    })
-    .join("");
-
-  container.querySelectorAll(".played-check").forEach((cb) => {
-    cb.addEventListener("change", (e) => {
-      const row = e.target.closest("tr");
-      row.querySelectorAll(".stat-input").forEach((inp) => (inp.disabled = !cb.checked));
-    });
-  });
 }
 
 document.getElementById("submit-btn").addEventListener("click", async () => {
@@ -288,9 +247,11 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
   const notes = document.getElementById("notes").value || null;
   const gameNumber = activeMatchGames.length + 1;
 
-  const playedRows = [...document.querySelectorAll("#rosters-container tr[data-player-id]")].filter(
-    (row) => row.querySelector(".played-check").checked
-  );
+  const rosterRows = collectRosterRows(document.getElementById("rosters-container"), winnerId);
+  const banRows = [
+    ...collectBans(document.getElementById("team-a-bans"), aId),
+    ...collectBans(document.getElementById("team-b-bans"), bId),
+  ];
 
   msg.textContent = "Saving...";
   msg.className = "form-msg";
@@ -313,18 +274,16 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
       .single();
     if (gameError) throw gameError;
 
-    if (playedRows.length > 0) {
-      const statRows = playedRows.map((row) => {
-        const playerId = row.dataset.playerId;
-        const teamId = row.dataset.teamId;
-        const stats = { player_id: playerId, team_id: teamId, game_id: game.id, win: teamId === winnerId };
-        STAT_FIELDS.forEach((f) => {
-          stats[f.key] = Number(row.querySelector(`[data-field="${f.key}"]`).value) || 0;
-        });
-        return stats;
-      });
-      const { error: statsError } = await supabase.from("game_player_stats").insert(statRows);
+    if (rosterRows.length > 0) {
+      const { error: statsError } = await supabase
+        .from("game_player_stats")
+        .insert(rosterRows.map((row) => ({ ...row, game_id: game.id })));
       if (statsError) throw statsError;
+    }
+
+    if (banRows.length > 0) {
+      const { error: bansError } = await supabase.from("game_bans").insert(banRows.map((row) => ({ ...row, game_id: game.id })));
+      if (bansError) throw bansError;
     }
 
     activeMatchGames.push({ id: game.id, game_number: gameNumber, winner_id: winnerId, duration_minutes: duration });
